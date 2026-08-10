@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
+from typing import Any
 
 
 DENIED_PATH_PARTS = {
@@ -23,6 +24,23 @@ DENIED_TEXT_PATTERNS = (
     re.compile("/" + "lustre" + "/fsw/"),
 )
 IGNORED_TOP_LEVEL = {".git", ".venv", ".pytest_cache", "build", "dist", "results"}
+
+# Canonical requester profiles may contain benchmark-side lookup helpers next
+# to genuine user-owned facts.  These names are structural evaluator metadata,
+# not task-specific rescue rules, and must never reach Luna or Jarvis.
+REQUESTER_HELPER_FIELDS = frozenset({"choice_keywords", "decision_terms"})
+EVALUATOR_ONLY_CONTEXT_FIELDS = frozenset(
+    {
+        "grader",
+        "grading",
+        "rubric",
+        "reference_solution",
+        "partial_solution",
+        "gold_answer",
+        "expected_choice",
+        "worker_only_overall_ceiling",
+    }
+)
 
 
 def assert_safe_relative_path(path: Path) -> None:
@@ -77,3 +95,42 @@ def load_public_task(path: Path) -> dict:
 
     walk(data)
     return data
+
+
+def sanitize_requester_context(value: Any) -> dict[str, Any]:
+    """Return only requester-owned fields from an out-of-tree JSON object.
+
+    The filter is recursive because release users may organize memory into
+    nested sections. Private evaluator helpers and underscore-prefixed
+    implementation fields are removed at every level. Arrays keep their
+    ordering while nested objects are filtered by the same rule.
+    """
+
+    if not isinstance(value, dict):
+        raise ValueError("requester context must be one JSON object")
+
+    def clean(item: Any) -> Any:
+        if isinstance(item, dict):
+            result: dict[str, Any] = {}
+            for raw_key, child in item.items():
+                if not isinstance(raw_key, str):
+                    continue
+                key = raw_key.casefold()
+                if (
+                    raw_key.startswith("_")
+                    or key in REQUESTER_HELPER_FIELDS
+                    or key in EVALUATOR_ONLY_CONTEXT_FIELDS
+                ):
+                    continue
+                result[raw_key] = clean(child)
+            return result
+        if isinstance(item, list):
+            return [clean(child) for child in item]
+        if item is None or isinstance(item, (bool, int, float, str)):
+            return item
+        raise ValueError("requester context must contain JSON-compatible values")
+
+    sanitized = clean(value)
+    if not sanitized:
+        raise ValueError("requester context contains no requester-owned fields")
+    return sanitized

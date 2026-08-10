@@ -1,14 +1,15 @@
 # Quickstart
 
-This guide covers release validation and no-model configuration smokes. It does
-not claim a model-backed benchmark episode or an official score.
+Sections 1--4 cover release validation and no-model configuration smokes. The
+later opt-in command shape covers one model-backed episode; it is not an
+official score or full-suite claim.
 
 ## Requirements
 
 - Python 3.10 or newer for source validation.
 - Docker with Buildx and `linux/amd64` support for the staging image that targets
   the eventual canonical runtime.
-- No API key, provider account, Jarvis model, or user model for the steps below.
+- No API key, provider account, Jarvis model, or user model for Sections 1--4.
 
 The staging tree is not redistributable until a public license and per-task
 attribution review are complete.
@@ -138,10 +139,9 @@ single-agent setting, pass the controller through the public
 keep the project-level scheduler separate from Parent and preserve per-session
 held-action identity.
 
-This staging release defines that single-agent port and includes only the
-deterministic `DryRunWorker`; it does not ship a model-backed OpenClaw
-`SingleAgentWorkerPort`. Consequently, a real single-agent run currently needs
-a participant-supplied port, and is not a one-command model-backed quickstart.
+The staging release also includes `OpenClawSingleAgentWorker`, which executes
+one worker through a loopback Gateway with no fake Parent. External runtimes can
+still replace it through the same `SingleAgentWorkerPort` boundary.
 
 ### Reference controller
 
@@ -151,22 +151,39 @@ file and populate it only when performing an explicitly approved model-backed
 run. Never bake credentials into the image, task manifests, run manifests, or
 logs.
 
-The model-backed reference workflow is not a validated quickstart. The one real
-network-capable canary run was rejected by the privacy acceptance gate after an
-exact credential appeared in temporary OpenClaw session state. Its result was
-not accepted as release evidence. Worker credentials are now represented as a
-file-backed OpenClaw `SecretRef`; an offline Gateway preflight found zero copies
-of its dummy value in the complete episode tree. This fixes accidental
-persistence, but does not replace a user-authorized real canary or isolate a
-credential from arbitrary code running as the same container uid. See
+The executable command surface is provider-neutral. A launcher supplies an
+episode-local `/workspace` Docker volume, a read-only public task, an export
+root, and out-of-tree secret/requester files, then invokes this shape:
+
+```sh
+jarvisbench run \
+  --setting single_agent --track agent_collaboration \
+  --controller reference \
+  --task-dir /tasks/<task-id> --episode-root /episode/runs \
+  --worker-model <provider/model> --provider-base-url <openai-compatible-url> \
+  --worker-api-key-file /run/provider/key \
+  --jarvis-model <provider/model> --jarvis-reasoning medium \
+  --user-model <provider/model> \
+  --requester-context /run/requester/profile.json
+```
+
+Credentials are supplied only through ignored environment/file mounts; the
+public image has no endpoint, model, or key default. Authorized representative
+single- and multi-agent reference canaries completed with exact receipt closure,
+valid artifacts, and sealed-grader handoff. This does not validate the full
+suite. File-backed `SecretRef` prevents accidental credential persistence, but
+same-UID worker code can still deliberately read mounted files; use a broker or
+stronger process/UID boundary when that threat is in scope. See
 `docs/RUNTIME_MIGRATION.md` before enabling a provider.
 
 ## 6. Official evaluation boundary
 
 Participant execution ends before official grading begins. The operator gives a
 sealed evaluator a read-only task-evaluation bundle and read-only participant
-results. The participant runtime never receives evaluator rubrics, graders,
-reference material, or requester-private context.
+results. The participant runtime never receives evaluator rubrics, graders, or
+reference material. The reference requester component lazily reads sanitized,
+out-of-tree requester context; it is not placed in the worker prompt or child
+environment, while same-UID mount access remains the limitation stated above.
 
 See `evaluator/README.md` for the public handoff and
 `docs/RELEASE_INVENTORY.md` for the data classification.

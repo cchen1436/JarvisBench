@@ -24,7 +24,9 @@ from typing import Any, Callable, Mapping, Protocol
 
 from jarvisbench.core.contracts import BoundaryCandidate
 from jarvisbench.core.controller import AttentionDecision
+from jarvisbench.core.decision_ledger import DecisionLedger, DecisionRecord
 from jarvisbench.core.privacy import assert_safe_relative_path, load_public_task
+from jarvisbench.reference.dynamic_mas.contracts import bounded_text
 
 
 Json = dict[str, Any]
@@ -154,10 +156,17 @@ class ControllerReview:
     action_id: str
     action_fingerprint: str
     decision: AttentionDecision
+    decision_id: str = ""
+    guidance: str = ""
 
     @classmethod
     def bind(
-        cls, candidate: BoundaryCandidate, decision: AttentionDecision
+        cls,
+        candidate: BoundaryCandidate,
+        decision: AttentionDecision,
+        *,
+        decision_id: str = "",
+        guidance: str = "",
     ) -> "ControllerReview":
         return cls(
             session_id=candidate.session_id,
@@ -166,6 +175,8 @@ class ControllerReview:
             action_id=candidate.action_id,
             action_fingerprint=candidate.action_fingerprint,
             decision=decision,
+            decision_id=decision_id,
+            guidance=guidance,
         )
 
 
@@ -176,6 +187,7 @@ class SingleAgentWorkerRequest:
     prompt: str
     prompt_kind: PromptKind
     required_result_paths: tuple[str, ...]
+    worker_timeout_seconds: int
     layout: SingleAgentEpisodeLayout
 
 
@@ -223,6 +235,13 @@ class SingleAgentControllerPort(Protocol):
         ...
 
 
+class SingleAgentRequesterPort(Protocol):
+    """Private requester channel used only after Jarvis spends attention."""
+
+    def answer(self, question: str, requester_context: str) -> str:
+        ...
+
+
 class DryRunWorker:
     """No-model port used by release validation."""
 
@@ -244,6 +263,8 @@ class SingleAgentRunResult:
     prompt_kind: str
     candidate_count: int
     attention_request_count: int
+    attention_budget_used: int
+    duplicate_attention_suppressed: int
     required_result_paths: tuple[str, ...]
     missing_result_paths: tuple[str, ...]
     episode_root: Path
@@ -471,6 +492,14 @@ def prepare_episode_layout(
     _mkdir_private(episode_root, exist_ok=False)
     export_root = episode_root / "export"
     _mkdir_private(export_root, exist_ok=False)
+    workspace_volume = os.environ.get("JARVISBENCH_WORKSPACE_VOLUME_ID", "")
+    if workspace_volume:
+        _validate_component(workspace_volume, "workspace volume id")
+    else:
+        # Direct Python use has no outer Docker orchestrator.  Preserve a
+        # collision-resistant logical id; executable Docker launchers should
+        # pass the exact mounted volume name through the environment variable.
+        workspace_volume = f"jarvisbench-single-{secrets.token_hex(12)}"
     return SingleAgentEpisodeLayout(
         episode_root=episode_root,
         export_root=export_root,
@@ -478,7 +507,7 @@ def prepare_episode_layout(
         # A run id is only unique inside one run root.  A random suffix prevents
         # two independent projects with the same task/run names from sharing
         # mutable workspace or control state.
-        workspace_volume=f"jarvisbench-single-{secrets.token_hex(12)}",
+        workspace_volume=workspace_volume,
     )
 
 
@@ -493,9 +522,22 @@ class SingleAgentRunner:
         self,
         worker: SingleAgentWorkerPort,
         controller: SingleAgentControllerPort | None = None,
+        *,
+        requester: SingleAgentRequesterPort | None = None,
+        requester_context_loader: Callable[[], str] | None = None,
+        max_attention_requests: int = 2,
     ) -> None:
+        if type(max_attention_requests) is not int or max_attention_requests < 0:
+            raise ValueError("max_attention_requests must be a non-negative integer")
+        if requester is not None and controller is None:
+            raise ValueError("a requester channel requires an attention controller")
+        if (requester is None) != (requester_context_loader is None):
+            raise ValueError("requester and requester_context_loader must be configured together")
         self.worker = worker
         self.controller = controller
+        self.requester = requester
+        self.requester_context_loader = requester_context_loader
+        self.max_attention_requests = max_attention_requests
 
     def run(
         self,
@@ -568,12 +610,19 @@ class SingleAgentRunner:
         session_id = "worker-0"
         candidate_count = 0
         attention_request_count = 0
+        attention_budget_used = 0
+        attention_fingerprints: set[str] = set()
+        duplicate_attention_suppressed = 0
+        decision_ledger = DecisionLedger(
+            layout.episode_root / "private" / "requester" / "decision_ledger.jsonl"
+        )
         # This is a bounded, non-authoritative audit export.  Authoritative
         # control/event state remains below layout.state in the named volume.
         review_receipts_path = layout.episode_root / "review_receipts.jsonl"
 
         def review(candidate: BoundaryCandidate) -> ControllerReview:
             nonlocal candidate_count, attention_request_count
+            nonlocal attention_budget_used, duplicate_attention_suppressed
             if candidate.session_id != session_id:
                 raise RuntimeError("single-agent candidate belongs to another session")
             candidate_count += 1
@@ -597,7 +646,70 @@ class SingleAgentRunner:
                         False,
                         f"controller failed closed: {type(exc).__name__}",
                     )
-            bound = ControllerReview.bind(candidate, decision)
+            decision_id = ""
+            guidance = ""
+            attention_fingerprint = hashlib.sha256(
+                (
+                    f"{session_id}\0{decision.scope}\0"
+                    + " ".join(str(decision.question or "").casefold().split())
+                ).encode("utf-8")
+            ).hexdigest()
+            if decision.request_attention and attention_fingerprint in attention_fingerprints:
+                duplicate_attention_suppressed += 1
+                decision = AttentionDecision(
+                    False,
+                    "duplicate requester decision suppressed; original action released",
+                )
+            elif decision.request_attention and attention_budget_used >= self.max_attention_requests:
+                decision = AttentionDecision(
+                    False,
+                    "project attention budget exhausted; original action released",
+                )
+            elif decision.request_attention:
+                attention_budget_used += 1
+                if self.requester is not None and self.requester_context_loader is not None:
+                    try:
+                        answer = bounded_text(
+                            self.requester.answer(
+                                str(decision.question),
+                                self.requester_context_loader(),
+                            ),
+                            "requester answer",
+                            1_400,
+                        )
+                        decision_id = DecisionLedger.new_id()
+                        guidance = bounded_text(
+                            f"Requester answer for this decision: {answer}",
+                            "requester guidance",
+                            1_600,
+                        )
+                        decision_ledger.append(
+                            DecisionRecord(
+                                decision_id=decision_id,
+                                answer=answer,
+                                scope="worker",
+                                affected_workers=(session_id,),
+                                provenance="luna_requester_channel",
+                                validity="project_episode",
+                                reversible=True,
+                            )
+                        )
+                        attention_fingerprints.add(attention_fingerprint)
+                    except Exception as exc:
+                        decision = AttentionDecision(
+                            False,
+                            f"requester channel failed closed: {type(exc).__name__}",
+                        )
+                        decision_id = ""
+                        guidance = ""
+                else:
+                    attention_fingerprints.add(attention_fingerprint)
+            bound = ControllerReview.bind(
+                candidate,
+                decision,
+                decision_id=decision_id,
+                guidance=guidance,
+            )
             if decision.request_attention:
                 attention_request_count += 1
             _append_private_jsonl(
@@ -614,6 +726,12 @@ class SingleAgentRunner:
                     "scope": decision.scope,
                     "reason": decision.reason,
                     "question": decision.question,
+                    "decision_id": decision_id,
+                    "guidance_sha256": (
+                        hashlib.sha256(guidance.encode("utf-8")).hexdigest()
+                        if guidance
+                        else ""
+                    ),
                 },
             )
             return bound
@@ -624,6 +742,7 @@ class SingleAgentRunner:
             prompt=prompt,
             prompt_kind=prompt_kind,
             required_result_paths=task.result_paths,
+            worker_timeout_seconds=int(task.manifest["runtime"]["worker_timeout_seconds"]),
             layout=layout,
         )
         execution = self.worker.execute(request, review)
@@ -670,6 +789,8 @@ class SingleAgentRunner:
             prompt_kind=prompt_kind.value,
             candidate_count=candidate_count,
             attention_request_count=attention_request_count,
+            attention_budget_used=attention_budget_used,
+            duplicate_attention_suppressed=duplicate_attention_suppressed,
             required_result_paths=task.result_paths,
             missing_result_paths=missing,
             episode_root=layout.episode_root,

@@ -52,10 +52,12 @@ RUN chmod 0755 \
        /usr/local/bin/jb \
     && chmod 0444 /opt/jarvisbench/TASKS_PROVENANCE.json /opt/jarvisbench/TASKS_SHA256SUMS \
     && python3 /usr/local/bin/jarvisbench-runtime-validate --runtime-only \
-    && install -d -m 0700 /var/lib/jarvisbench/openclaw /var/lib/jarvisbench/episodes \
+    && install -d -m 0700 /var/lib/jarvisbench/openclaw /var/lib/jarvisbench/episodes /workspace \
     && groupadd --system --gid 10001 jarvisbench \
     && useradd --system --uid 10001 --gid 10001 --home-dir /var/lib/jarvisbench --shell /usr/sbin/nologin jarvisbench \
-    && chown -R jarvisbench:jarvisbench /var/lib/jarvisbench
+    && chown -R jarvisbench:jarvisbench /var/lib/jarvisbench /workspace
+
+ENV JARVISBENCH_WORKSPACE_ROOT=/workspace
 
 USER jarvisbench
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/jarvisbench-entrypoint"]

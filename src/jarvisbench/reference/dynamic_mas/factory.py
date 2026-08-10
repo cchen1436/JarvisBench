@@ -19,10 +19,13 @@ class ReferenceDynamicMasConfig:
     jarvis_model: str
     user_model: str
     jarvis_reasoning: str = "medium"
+    max_attention_requests: int = 2
 
     def __post_init__(self) -> None:
         if not self.jarvis_model or not self.user_model:
             raise ValueError("Jarvis and user model ids must be configured")
+        if type(self.max_attention_requests) is not int or self.max_attention_requests < 0:
+            raise ValueError("max_attention_requests must be a non-negative integer")
 
 
 def build_reference_scheduler(
@@ -57,4 +60,5 @@ def build_reference_scheduler(
         registry=registry,
         control_plane=SessionControlPlane(control_root, project_id=project_id),
         decision_ledger=DecisionLedger(private_ledger_path),
+        max_attention_requests=config.max_attention_requests,
     )

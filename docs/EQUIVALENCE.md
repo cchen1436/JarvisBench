@@ -48,6 +48,8 @@ The public runner therefore delegates execution through a small
 external or reference attention controller implements the same optional
 decision port; the runner binds its output to the exact candidate session,
 epoch, nonce, action ID, and fingerprint. The model never owns those fields.
+The clean release also includes a model-backed loopback-Gateway OpenClaw
+implementation of this port; it does not import the frozen research monolith.
 
 ## Portable state layout
 
@@ -70,10 +72,11 @@ episode end. Each episode receives a unique volume identity.
 The public module does not claim that a no-model port reproduces an OpenClaw
 trajectory. It also does not embed a grader, private requester profile, provider
 endpoint, model default, Slurm account, SQSH path, or task-specific rescue rule.
-OpenClaw execution parity and the full deterministic hold/delivery/application
-protocol require the separate runtime integration tests and a future accepted
-end-to-end canary. Scores from the old runner and the clean runner are not
-silently pooled without those checks.
+OpenClaw execution and the deterministic hold/delivery/application protocol are
+covered by runtime integration tests and accepted representative single/MAS
+canaries. Those canaries establish installation and control-path viability, not
+full-suite score equivalence, arbitrary provider/platform parity, or permission
+to pool clean-runner scores with historical results.
 
 ## Multi-agent extraction
 

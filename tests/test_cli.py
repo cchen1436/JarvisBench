@@ -19,6 +19,19 @@ def test_private_requester_context_is_bounded_and_lazy(tmp_path: Path):
         _requester_context_loader(oversized)
 
 
+def test_private_requester_context_removes_helpers_recursively(tmp_path: Path):
+    source = tmp_path / "requester.json"
+    source.write_text(
+        '{"choice":"B","choice_keywords":["B"],"nested":'
+        '{"rationale":"safer","decision_terms":["gold"],"_grader":"x"},'
+        '"rubric":"sealed"}',
+        encoding="utf-8",
+    )
+    assert _requester_context_loader(source)() == (
+        '{"choice":"B","nested":{"rationale":"safer"}}'
+    )
+
+
 def test_episode_cli_has_explicit_setting_track_and_models():
     args = build_parser().parse_args(
         [
@@ -48,3 +61,32 @@ def test_episode_cli_has_explicit_setting_track_and_models():
     assert args.controller == "reference"
     assert args.worker_thinking == "provider_default"
     assert args.jarvis_reasoning == "medium"
+    assert args.max_attention_requests == 2
+
+
+def test_episode_cli_accepts_single_reference_transport():
+    args = build_parser().parse_args(
+        [
+            "run",
+            "--setting",
+            "single_agent",
+            "--track",
+            "agent_collaboration",
+            "--controller",
+            "reference",
+            "--task-dir",
+            "/task",
+            "--episode-root",
+            "/episode",
+            "--worker-model",
+            "provider/worker",
+            "--jarvis-model",
+            "provider/jarvis",
+            "--user-model",
+            "provider/user",
+            "--requester-context",
+            "/run/secrets/requester.json",
+        ]
+    )
+    assert args.setting == "single_agent"
+    assert args.controller == "reference"

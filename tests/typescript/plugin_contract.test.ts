@@ -235,6 +235,19 @@ test("dynamic registration and control namespaces are exact per session", () => 
   assert.equal(pluginModule.validateSessionControl(baseControl(), sessionId), true);
   assert.equal(pluginModule.validateSessionControl(baseControl(), siblingId), false);
   assert.equal(pluginModule.validateSessionControl(sibling, siblingId), true);
+  assert.equal(
+    pluginModule.isExecutionManagerSession("chat", {
+      project_id: projectId,
+      agent_id: "worker-fixed",
+      session_id: "chat",
+      session_key: "agent:main:chat",
+      parent_id: "project-root",
+      role: "worker",
+      workstream_id: "single-worker",
+      status: "active",
+    }),
+    false,
+  );
 });
 
 test("stale batch, action fingerprint, and sibling responses are rejected", () => {
@@ -406,4 +419,161 @@ test("plugin holds a child mutation and releases only an exact response", async 
       assert.ok(event.payload[field].length > 0);
     }
   }
+});
+
+test("exact tool continuation ack closes guidance delivery and application", async () => {
+  writeControl(baseControl());
+  const handlers = new Map<string, Function>();
+  const tools = new Map<string, Record<string, any>>();
+  pluginModule.default.register({
+    source: "test-interrupt",
+    registerTool(tool: Record<string, any>) {
+      tools.set(String(tool.name), tool);
+    },
+    on(name: string, handler: Function) {
+      handlers.set(name, handler);
+    },
+  });
+  const beforeTool = handlers.get("before_tool_call");
+  const persist = handlers.get("tool_result_persist");
+  const beforePrompt = handlers.get("before_prompt_build");
+  assert.ok(beforeTool && persist && beforePrompt);
+
+  const heldPromise = beforeTool!(
+    {
+      toolName: "write",
+      toolCallId: "call-interrupt",
+      params: { path: "results/analysis/revised.txt", content: "old choice" },
+    },
+    { sessionId, runId: "run-interrupt" },
+  );
+  let review: Record<string, any> | undefined;
+  const deadline = Date.now() + 2000;
+  while (Date.now() < deadline && !review) {
+    const events = fs.existsSync(eventPath)
+      ? fs
+          .readFileSync(eventPath, "utf8")
+          .split("\n")
+          .filter(Boolean)
+          .map((line) => JSON.parse(line))
+      : [];
+    review = events
+      .filter((event) => event.type === "jarvis.review.requested")
+      .find((event) =>
+        event.payload.held_actions.some(
+          (item: any) => item.tool_call_id === "call-interrupt",
+        ),
+      );
+    if (!review) await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  assert.ok(review);
+  const nextNonce = "b".repeat(48);
+  const guidance = "Requester answer for this decision: use option B.";
+  const guidanceSha256 = crypto.createHash("sha256").update(guidance).digest("hex");
+  const deliveryReceiptId = `delivery-${"c".repeat(24)}`;
+  const response = {
+    schema_version: "1.0",
+    kind: "review_response",
+    control_id: "control-interrupt",
+    project_id: projectId,
+    run_id: "run-interrupt",
+    session_id: sessionId,
+    turn_id: review!.payload.turn_id,
+    review_id: review!.payload.review_id,
+    batch_id: review!.payload.batch_id,
+    action_ids: review!.payload.held_actions.map((item: any) => item.action_id),
+    action_fingerprints: review!.payload.held_actions.map(
+      (item: any) => item.action_fingerprint,
+    ),
+    control_epoch: 0,
+    next_control_epoch: 1,
+    nonce: "a".repeat(48),
+    next_nonce: nextNonce,
+    expected_event_seq: review!.payload.expected_event_seq,
+    decision: "interrupt_replan",
+    decision_id: "decision-interrupt",
+    guidance,
+    guidance_sha256: guidanceSha256,
+    delivery_receipt_id: deliveryReceiptId,
+    created_at: new Date().toISOString(),
+  };
+  const state = baseControl();
+  state.control_epoch = 1;
+  state.nonce = nextNonce;
+  state.review_responses = [response];
+  state.delivery_receipts = [
+    {
+      receipt_id: deliveryReceiptId,
+      decision_id: "decision-interrupt",
+      target_session_id: sessionId,
+      control_epoch: 1,
+      nonce: nextNonce,
+      guidance_sha256: guidanceSha256,
+      status: "delivered",
+    },
+  ];
+  state.guidance_queue = [
+    {
+      receipt_id: deliveryReceiptId,
+      decision_id: "decision-interrupt",
+      text: guidance,
+      guidance_sha256: guidanceSha256,
+      control_epoch: 1,
+      nonce: nextNonce,
+      route: "next_model_boundary",
+      scope: "worker",
+    },
+  ];
+  writeControl(state);
+  const held = await heldPromise;
+  assert.equal((held as any).block, true);
+  assert.match(String((held as any).blockReason), /JARVIS_HELD_ACTION_INVALIDATED_V1/);
+
+  await persist!(
+    {
+      toolCallId: "call-interrupt",
+      message: { content: (held as any).blockReason },
+    },
+    { sessionId, runId: "run-interrupt" },
+  );
+  await beforeTool!(
+    { toolName: "jarvis_control", toolCallId: "call-ack", params: {} },
+    { sessionId, runId: "run-interrupt" },
+  );
+  const controlTool = tools.get("jarvis_control");
+  assert.ok(controlTool);
+  const ack = await controlTool!.execute("call-ack", {
+    judgment_id: "decision-interrupt",
+    session_id: sessionId,
+    control_epoch: 1,
+    ack_nonce: nextNonce,
+    action_fingerprint: crypto
+      .createHash("sha256")
+      .update(review!.payload.held_actions[0].action_fingerprint)
+      .digest("hex"),
+  });
+  assert.equal(ack.details.status, "acknowledged");
+
+  const events = fs
+    .readFileSync(eventPath, "utf8")
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => JSON.parse(line));
+  const delivered = events.filter(
+    (event) =>
+      event.type === "control.guidance.delivered" &&
+      event.payload.delivery_receipt_id === deliveryReceiptId,
+  );
+  const applied = events.filter(
+    (event) =>
+      event.type === "control.guidance.applied" &&
+      event.payload.delivery_receipt_id === deliveryReceiptId,
+  );
+  assert.equal(delivered.length, 1);
+  assert.equal(applied.length, 1);
+  assert.equal(applied[0].payload.application_basis, "exact_tool_result_continuation_ack");
+  assert.equal(
+    await beforePrompt!({}, { sessionId, runId: "run-interrupt" }),
+    undefined,
+  );
 });

@@ -10,11 +10,10 @@ remain outside a participant release. It does not authorize redistribution.
 - Optional reference controller: present as a replaceable implementation.
 - No-model tests, privacy scan, task checksum validation, and topology dry runs:
   available through `scripts/validate.sh`.
-- Model-backed end-to-end canary: attempted once, but rejected by the runtime
-  privacy gate after an exact provider credential appeared in temporary
-  OpenClaw session state; no result was admitted as release evidence. The
-  subsequent file-backed `SecretRef` remediation passes a no-network
-  Gateway/full-state dummy-secret scan, but has not had a second real canary.
+- Model-backed end-to-end canary: representative single-agent and dynamic-MAS
+  reference episodes pass runtime, artifact, exact-receipt, secret-scan, and
+  sealed-grader acceptance. These are functional canaries, not a full-suite or
+  score-parity result.
 - Full benchmark rerun: intentionally not performed for release engineering.
 - Public license: **missing and blocking redistribution**.
 - Per-task attribution review: **not final and blocking redistribution**.
@@ -150,20 +149,16 @@ and participant results are the only normal handoff to the sealed evaluator.
 
 Before publication, the project must add an approved top-level license, finish
 per-task attribution review, resolve or formally isolate the high/critical npm
-findings, rebuild and record the final OCI manifest digest, and pass a fresh
-model-backed canary without credentials entering session or retained evidence.
+findings, and rebuild and record the final signed OCI manifest digest.
 The current same-uid file mount protects against accidental persistence, not a
 malicious worker process that deliberately reads its mounted credential; a
 credential broker or stronger process/uid boundary is required if that is part
 of the public threat model.
 The grading-bearing upstream provenance URL must likewise be reviewed; this
 staging pass deliberately did not rewrite a frozen public manifest to hide it.
-The release also needs either a model-backed `SingleAgentWorkerPort`
-implementation or an explicit decision to publish that port as a participant
-integration responsibility; only the deterministic `DryRunWorker` is currently
-included.
+The release includes both the deterministic `DryRunWorker` and a model-backed
+loopback-Gateway `SingleAgentWorkerPort` implementation.
 
 This inventory does not claim that a no-model smoke reproduces an OpenClaw
-trajectory, that the rejected model-backed canary passed, that a full batch was
-rerun, or that historical scores can be pooled with the clean runtime without
-parity validation.
+trajectory, that a full batch was rerun, or that historical scores can be pooled
+with the clean runtime without parity validation.

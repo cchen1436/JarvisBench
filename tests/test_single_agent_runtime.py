@@ -268,3 +268,71 @@ def test_export_symlink_is_rejected_before_hashing(tmp_path: Path) -> None:
 def test_worker_diagnostics_are_bounded_scalars() -> None:
     with pytest.raises(ValueError, match="scalar"):
         WorkerExecution("dry_run", diagnostics={"trace": ["full", "trace"]})
+
+
+def test_single_attention_budget_and_duplicate_question_are_deterministic(
+    tmp_path: Path,
+) -> None:
+    class AlwaysAsk:
+        def decide(self, _value: BoundaryCandidate) -> AttentionDecision:
+            return AttentionDecision(
+                True,
+                "requester-owned choice",
+                "Which option should I use?",
+                "worker",
+            )
+
+    class TwoReviews:
+        reviews: list[ControllerReview]
+
+        def __init__(self) -> None:
+            self.reviews = []
+
+        def execute(self, request: SingleAgentWorkerRequest, review):
+            self.reviews.append(review(candidate(request.session_id)))
+            second = candidate(request.session_id)
+            second = BoundaryCandidate(
+                session_id=second.session_id,
+                epoch=3,
+                nonce="nonce-3",
+                action_id="action-3",
+                action_fingerprint="e" * 64,
+                reduced_update=second.reduced_update,
+                consequence=second.consequence,
+            )
+            self.reviews.append(review(second))
+            return WorkerExecution("dry_run")
+
+    worker = TwoReviews()
+    result = SingleAgentRunner(
+        worker,
+        ReferenceSingleAgentControllerAdapter(AlwaysAsk()),
+        max_attention_requests=2,
+    ).run(TASKS / "jbv1_batch_export", tmp_path / "runs", run_id="duplicate")
+    assert [item.decision.request_attention for item in worker.reviews] == [True, False]
+    assert result.attention_request_count == 1
+    assert result.attention_budget_used == 1
+    assert result.duplicate_attention_suppressed == 1
+
+
+def test_single_attention_budget_zero_never_spends_attention(tmp_path: Path) -> None:
+    class AlwaysAsk:
+        def decide(self, _value: BoundaryCandidate) -> AttentionDecision:
+            return AttentionDecision(True, "choice", "Which option?", "worker")
+
+    class CandidateWorker:
+        bound: ControllerReview | None = None
+
+        def execute(self, request: SingleAgentWorkerRequest, review):
+            self.bound = review(candidate(request.session_id))
+            return WorkerExecution("dry_run")
+
+    worker = CandidateWorker()
+    result = SingleAgentRunner(
+        worker,
+        ReferenceSingleAgentControllerAdapter(AlwaysAsk()),
+        max_attention_requests=0,
+    ).run(TASKS / "jbv1_batch_export", tmp_path / "runs", run_id="zero-budget")
+    assert worker.bound is not None
+    assert worker.bound.decision.request_attention is False
+    assert result.attention_budget_used == 0

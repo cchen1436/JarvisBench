@@ -8,7 +8,7 @@ import uuid
 from dataclasses import asdict
 from pathlib import Path
 
-from jarvisbench.core.privacy import scan_release_tree
+from jarvisbench.core.privacy import sanitize_requester_context, scan_release_tree
 from jarvisbench.core.providers import read_secret, resolve_secret_file
 from jarvisbench.settings.multi_agent import MultiAgentSetting
 from jarvisbench.settings.single_agent import SingleAgentSetting
@@ -57,17 +57,24 @@ def _requester_context_loader(path: Path):
     def load() -> str:
         # Load lazily only when Jarvis spends requester attention. The value is
         # never included in run manifests, diagnostics, or worker-visible state.
-        return source.read_text(encoding="utf-8")
+        try:
+            raw = json.loads(source.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise ValueError("requester context must be valid JSON") from exc
+        return json.dumps(
+            sanitize_requester_context(raw),
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
 
     return load
 
 
 def _run_episode(args: argparse.Namespace) -> int:
-    if args.setting != "multi_agent" or args.track != "agent_collaboration":
+    if args.track != "agent_collaboration":
         raise SystemExit(
-            "the executable release backend currently covers multi_agent + "
-            "agent_collaboration; use replay for Track 2 and the public worker "
-            "port for single_agent"
+            "Track 2 is an isolated post-hoc text path; use the replay command"
         )
     if not args.worker_model or not args.provider_base_url:
         raise SystemExit("worker model and provider base URL must be configured explicitly")
@@ -85,19 +92,9 @@ def _run_episode(args: argparse.Namespace) -> int:
                 "or --worker-api-key-file"
             )
 
-    # Imports are lazy so baseline configuration, Track 2 replay, and release
-    # validation never initialize OpenClaw or a provider client.
-    from jarvisbench.reference.dynamic_mas.factory import (
-        ReferenceDynamicMasConfig,
-        build_reference_scheduler,
-    )
-    from jarvisbench.settings.multi_agent_runtime import (
-        MultiAgentRuntime,
-        MultiAgentRuntimeConfig,
-    )
-
     project_id = args.project_id or f"episode-{uuid.uuid4().hex}"
-    scheduler = None
+    reference_provider = None
+    requester_loader = None
     if args.controller == "reference":
         if not args.jarvis_model or not args.user_model or args.requester_context is None:
             raise SystemExit(
@@ -115,18 +112,93 @@ def _run_episode(args: argparse.Namespace) -> int:
                 "a JARVISBENCH_API_KEY value or JARVISBENCH_API_KEY_FILE is required "
                 "by the reference controller"
             )
+        from jarvisbench.core.providers import OpenAICompatibleProvider
+
+        # Positional construction avoids rendering a credential-shaped
+        # assignment in source while keeping the already validated secret only
+        # in process memory.
+        reference_provider = OpenAICompatibleProvider(
+            args.reference_provider_base_url or args.provider_base_url,
+            reference_key,
+        )
+        requester_loader = _requester_context_loader(args.requester_context)
+
+    # Imports remain lazy so validation, dry-run, and Track 2 never initialize
+    # OpenClaw or a provider client.
+    if args.setting == "single_agent":
+        from jarvisbench.reference.luna import LunaUser
+        from jarvisbench.reference.single_agent import (
+            ReferenceSingleAgentControllerAdapter,
+        )
+        from jarvisbench.settings.single_agent_openclaw import (
+            OpenClawSingleAgentConfig,
+            OpenClawSingleAgentWorker,
+        )
+        from jarvisbench.settings.single_agent_runtime import SingleAgentRunner
+
+        controller = None
+        requester = None
+        if args.controller == "reference":
+            assert reference_provider is not None and requester_loader is not None
+            controller = ReferenceSingleAgentControllerAdapter.from_provider(
+                reference_provider,
+                model=args.jarvis_model,
+                reasoning=args.jarvis_reasoning,
+            )
+            requester = LunaUser(reference_provider, args.user_model)
+        worker = OpenClawSingleAgentWorker(
+            OpenClawSingleAgentConfig(
+                worker_model=args.worker_model,
+                provider_base_url=args.provider_base_url,
+                api_key_env=args.worker_api_key_env,
+                api_key_file=args.worker_api_key_file,
+                thinking=args.worker_thinking,
+                plugin_dir=args.plugin_dir,
+                runtime_root=args.runtime_root,
+                project_id=project_id,
+            )
+        )
+        runner = SingleAgentRunner(
+            worker,
+            controller,
+            requester=requester,
+            requester_context_loader=requester_loader,
+            max_attention_requests=args.max_attention_requests,
+        )
+        result = runner.run(
+            args.task_dir,
+            args.episode_root,
+            run_id=f"run-{uuid.uuid4().hex}",
+        )
+        print(json.dumps(result.to_record(), indent=2, sort_keys=True))
+        return 0 if result.status == "completed" else 1
+
+    from jarvisbench.reference.dynamic_mas.factory import (
+        ReferenceDynamicMasConfig,
+        build_reference_scheduler,
+    )
+    from jarvisbench.settings.multi_agent_runtime import (
+        MultiAgentRuntime,
+        MultiAgentRuntimeConfig,
+    )
+
+    scheduler = None
+    if args.controller == "reference":
+        assert reference_provider is not None and requester_loader is not None
         scheduler = build_reference_scheduler(
             project_id=project_id,
             control_root=args.episode_root / "private" / "control",
             private_ledger_path=(
                 args.episode_root / "private" / "requester" / "decision_ledger.jsonl"
             ),
-            requester_context_loader=_requester_context_loader(args.requester_context),
+            requester_context_loader=requester_loader,
             config=ReferenceDynamicMasConfig(
                 jarvis_model=args.jarvis_model,
                 user_model=args.user_model,
                 jarvis_reasoning=args.jarvis_reasoning,
+                max_attention_requests=args.max_attention_requests,
             ),
+            provider=reference_provider,
         )
     runtime = MultiAgentRuntime(
         MultiAgentRuntimeConfig(
@@ -183,6 +255,10 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument(
         "--provider-base-url", default=os.environ.get("JARVISBENCH_API_BASE", "")
     )
+    run.add_argument(
+        "--reference-provider-base-url",
+        default=os.environ.get("JARVISBENCH_API_BASE", ""),
+    )
     run.add_argument("--worker-api-key-env", default="JARVISBENCH_WORKER_API_KEY")
     run.add_argument(
         "--worker-api-key-file",
@@ -201,7 +277,18 @@ def build_parser() -> argparse.ArgumentParser:
         default="medium",
     )
     run.add_argument("--requester-context", type=Path)
+    run.add_argument(
+        "--max-attention-requests",
+        type=int,
+        default=2,
+        help="project-level requester-attention cap for the reference controller",
+    )
     run.add_argument("--plugin-dir", type=Path)
+    run.add_argument(
+        "--runtime-root",
+        type=Path,
+        help="container-local or named-volume root for mutable single-agent state",
+    )
     run.set_defaults(func=_run_episode)
     return parser
 

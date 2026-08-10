@@ -9,7 +9,12 @@ from typing import Any, Callable, Mapping, Protocol
 
 from jarvisbench.core.contracts import BoundaryCandidate, ReducedUpdate
 from jarvisbench.core.controller import AttentionController, AttentionDecision
-from jarvisbench.core.decision_ledger import DecisionLedger, DecisionRecord
+from jarvisbench.core.decision_ledger import (
+    DecisionApplicationRecord,
+    DecisionDeliveryRecord,
+    DecisionLedger,
+    DecisionRecord,
+)
 
 from .contracts import ReviewRequest, SessionBinding, bounded_text
 from .control_plane import SessionControlPlane
@@ -52,7 +57,10 @@ class DynamicMasScheduler:
         registry: DynamicChildRegistry,
         control_plane: SessionControlPlane,
         decision_ledger: DecisionLedger,
+        max_attention_requests: int = 2,
     ) -> None:
+        if type(max_attention_requests) is not int or max_attention_requests < 0:
+            raise ValueError("max_attention_requests must be a non-negative integer")
         self.project_id = project_id
         self.controller = controller
         self.requester = requester
@@ -61,8 +69,13 @@ class DynamicMasScheduler:
         self.control_plane = control_plane
         self.decision_ledger = decision_ledger
         self.reducer = LiveChildReducer(project_id)
+        self.max_attention_requests = max_attention_requests
         self._attention_lock = threading.Lock()
+        self._attention_requests_used = 0
+        self._attention_fingerprints: set[str] = set()
+        self._duplicate_attention_suppressed = 0
         self._processed_reviews: dict[str, SchedulerOutcome] = {}
+        self._logged_applications: set[str] = set()
 
     def register(self, binding: SessionBinding) -> None:
         self.registry.register(binding)
@@ -128,32 +141,14 @@ class DynamicMasScheduler:
         decision_id = DecisionLedger.new_id()
         target = self.registry.resolve(review.session_id)
         receipts: list[str] = []
-        routed: list[SessionBinding] = []
-
-        # The held action is always invalidated before guidance is exposed.
-        invalidation = self.control_plane.interrupt(
-            review,
-            decision_id=decision_id,
-            guidance=guidance,
-        )
-        receipts.append(str(invalidation["receipt_id"]))
-        routed.append(target)
-
-        # Project scope reaches Parent integration as the narrow deterministic
-        # cross-workstream route.  It is not broadcast to unrelated children.
+        routed: list[SessionBinding] = [target]
         if decision.scope == "project":
-            parent = self.registry.parent()
-            receipt = self.control_plane.deliver(
-                parent,
-                decision_id=decision_id,
-                guidance=guidance,
-                route="parent_integration",
-                scope="project",
-            )
-            receipts.append(str(receipt["receipt_id"]))
-            routed.append(parent)
-
+            routed.append(self.registry.parent())
         unique = {binding.session_id: binding for binding in routed}
+
+        # Persist the requester decision before making it visible in mutable
+        # control state. Exact delivery/application links are appended after
+        # each deterministic control transaction.
         self.decision_ledger.append(
             DecisionRecord(
                 decision_id=decision_id,
@@ -166,9 +161,51 @@ class DynamicMasScheduler:
                 provenance="luna_requester_channel",
                 validity="project_episode",
                 reversible=True,
-                delivery_receipts=tuple(receipts),
             )
         )
+
+        # The held action is always invalidated before guidance is exposed.
+        invalidation = self.control_plane.interrupt(
+            review,
+            decision_id=decision_id,
+            guidance=guidance,
+        )
+        receipts.append(str(invalidation["delivery_receipt_id"]))
+        self.decision_ledger.append_delivery(
+            DecisionDeliveryRecord(
+                decision_id=decision_id,
+                delivery_receipt_id=str(invalidation["delivery_receipt_id"]),
+                invalidation_receipt_id=str(invalidation["receipt_id"]),
+                target_session_id=review.session_id,
+                review_id=review.review_id,
+                control_epoch=int(invalidation["new_epoch"]),
+                guidance_sha256=str(invalidation["guidance_sha256"]),
+            )
+        )
+
+        # Project scope reaches Parent integration as the narrow deterministic
+        # cross-workstream route.  It is not broadcast to unrelated children.
+        if decision.scope == "project":
+            parent = unique[self.registry.parent().session_id]
+            receipt = self.control_plane.deliver(
+                parent,
+                decision_id=decision_id,
+                guidance=guidance,
+                route="parent_integration",
+                scope="project",
+            )
+            receipts.append(str(receipt["receipt_id"]))
+            self.decision_ledger.append_delivery(
+                DecisionDeliveryRecord(
+                    decision_id=decision_id,
+                    delivery_receipt_id=str(receipt["receipt_id"]),
+                    invalidation_receipt_id="",
+                    target_session_id=parent.session_id,
+                    review_id=review.review_id,
+                    control_epoch=int(receipt["control_epoch"]),
+                    guidance_sha256=str(receipt["guidance_sha256"]),
+                ),
+            )
         return SchedulerOutcome(
             disposition="interrupt_replan",
             session_id=review.session_id,
@@ -179,12 +216,21 @@ class DynamicMasScheduler:
             delivery_receipts=tuple(receipts),
         )
 
+    @staticmethod
+    def _attention_fingerprint(
+        *, session_id: str, decision: AttentionDecision
+    ) -> str:
+        normalized_question = " ".join(str(decision.question or "").casefold().split())
+        return hashlib.sha256(
+            f"{session_id}\0{decision.scope}\0{normalized_question}".encode("utf-8")
+        ).hexdigest()
+
     def process_event(self, event: Mapping[str, Any]) -> SchedulerOutcome | None:
         if event.get("type") == "control.guidance.applied":
             payload = event.get("payload")
             if not isinstance(payload, Mapping) or payload.get("project_id") != self.project_id:
                 return None
-            self.control_plane.mark_applied(
+            receipt = self.control_plane.mark_applied(
                 session_id=str(payload.get("session_id", "")),
                 receipt_id=str(payload.get("delivery_receipt_id", "")),
                 model_boundary_id=str(payload.get("model_boundary_id", "")),
@@ -192,6 +238,20 @@ class DynamicMasScheduler:
                 nonce=str(payload.get("nonce", "")),
                 guidance_sha256=str(payload.get("guidance_sha256", "")),
             )
+            application_id = str(receipt["receipt_id"])
+            if application_id not in self._logged_applications:
+                self.decision_ledger.append_application(
+                    DecisionApplicationRecord(
+                        decision_id=str(receipt["decision_id"]),
+                        delivery_receipt_id=str(receipt["delivery_receipt_id"]),
+                        application_receipt_id=application_id,
+                        target_session_id=str(receipt["target_session_id"]),
+                        model_boundary_id=str(receipt["model_boundary_id"]),
+                        control_epoch=int(receipt["control_epoch"]),
+                        guidance_sha256=str(receipt["guidance_sha256"]),
+                    )
+                )
+                self._logged_applications.add(application_id)
             return None
         card = self.reducer.observe(event)
         if event.get("type") != "jarvis.review.requested":
@@ -231,6 +291,35 @@ class DynamicMasScheduler:
             return outcome
 
         with self._attention_lock:
+            attention_fingerprint = self._attention_fingerprint(
+                session_id=(
+                    self.project_id if decision.scope == "project" else review.session_id
+                ),
+                decision=decision,
+            )
+            if attention_fingerprint in self._attention_fingerprints:
+                self._duplicate_attention_suppressed += 1
+                outcome = self._allow(review)
+                outcome = SchedulerOutcome(
+                    disposition="duplicate_attention_allow",
+                    session_id=outcome.session_id,
+                    review_id=outcome.review_id,
+                )
+                self._processed_reviews[review.review_id] = outcome
+                return outcome
+            if self._attention_requests_used >= self.max_attention_requests:
+                outcome = self._allow(review)
+                outcome = SchedulerOutcome(
+                    disposition="attention_budget_allow",
+                    session_id=outcome.session_id,
+                    review_id=outcome.review_id,
+                )
+                self._processed_reviews[review.review_id] = outcome
+                return outcome
+            # Reserve before entering the requester channel. A failed requester
+            # call still consumed scarce attention/capacity and must not permit
+            # a concurrent review to exceed the project-level cap.
+            self._attention_requests_used += 1
             try:
                 # Private requester state is loaded lazily and goes only to the
                 # requester channel, never to Jarvis's candidate packet.
@@ -243,8 +332,20 @@ class DynamicMasScheduler:
                     decision=decision,
                     answer=answer,
                 )
+                self._attention_fingerprints.add(attention_fingerprint)
             except Exception as exc:
-                outcome = self._allow(review, error=exc)
+                state = self.control_plane.read(review.session_id)
+                if (
+                    state["control_epoch"] == review.control_epoch
+                    and state["nonce"] == review.nonce
+                    and isinstance(state.get("active_review"), dict)
+                ):
+                    outcome = self._allow(review, error=exc)
+                else:
+                    # Guidance/control was already committed. A stale allow
+                    # would both fail and obscure the receipt gap; surface the
+                    # transaction error so episode admission fails visibly.
+                    raise
         self._processed_reviews[review.review_id] = outcome
         return outcome
 
@@ -260,17 +361,36 @@ class DynamicMasScheduler:
         if target.status not in TERMINAL_STATUSES:
             raise ValueError("terminal decision route requires a completed child")
         parent = self.registry.parent()
-        route = "targeted_repair" if scope == "worker" else "parent_integration"
-        # The completed session records the narrowly scoped repair receipt; the
-        # Parent always receives the integration fallback.  Running that repair
-        # is an explicit runner phase, never an implicit team restart.
-        child_receipt = self.control_plane.deliver(
-            target,
-            decision_id=decision_id,
-            guidance=guidance,
-            route=route,
-            scope=scope,
-        )
+        # Only a worker-scoped correction needs an explicit targeted-repair
+        # marker on the completed child. Project/portfolio guidance goes solely
+        # to Parent integration: a terminal child can never acknowledge a
+        # normal parent-integration delivery, so creating one there would be an
+        # intrinsically unclosable receipt.
+        receipts: list[str] = []
+        routed_sessions: list[str] = []
+        if scope == "worker":
+            child_receipt = self.control_plane.deliver(
+                target,
+                decision_id=decision_id,
+                guidance=guidance,
+                route="targeted_repair",
+                scope=scope,
+            )
+            self.decision_ledger.append_delivery(
+                DecisionDeliveryRecord(
+                    decision_id=decision_id,
+                    delivery_receipt_id=str(child_receipt["receipt_id"]),
+                    invalidation_receipt_id="",
+                    target_session_id=target.session_id,
+                    review_id="terminal-route",
+                    control_epoch=int(child_receipt["control_epoch"]),
+                    guidance_sha256=str(child_receipt["guidance_sha256"]),
+                )
+            )
+            receipts.append(str(child_receipt["receipt_id"]))
+            routed_sessions.append(target.session_id)
+        # Parent always receives the integration fallback. Running a worker
+        # repair is an explicit runner phase, never an implicit team restart.
         parent_receipt = self.control_plane.deliver(
             parent,
             decision_id=decision_id,
@@ -278,16 +398,24 @@ class DynamicMasScheduler:
             route="parent_integration",
             scope=scope,
         )
+        self.decision_ledger.append_delivery(
+            DecisionDeliveryRecord(
+                decision_id=decision_id,
+                delivery_receipt_id=str(parent_receipt["receipt_id"]),
+                invalidation_receipt_id="",
+                target_session_id=parent.session_id,
+                review_id="terminal-route",
+                control_epoch=int(parent_receipt["control_epoch"]),
+                guidance_sha256=str(parent_receipt["guidance_sha256"]),
+            )
+        )
         return SchedulerOutcome(
             disposition="targeted_repair_or_parent_integration",
             session_id=target_session_id,
             review_id="terminal-route",
             decision_id=decision_id,
-            routed_sessions=(target.session_id, parent.session_id),
-            delivery_receipts=(
-                str(child_receipt["receipt_id"]),
-                str(parent_receipt["receipt_id"]),
-            ),
+            routed_sessions=tuple((*routed_sessions, parent.session_id)),
+            delivery_receipts=tuple((*receipts, str(parent_receipt["receipt_id"]))),
         )
 
     def parent_integration_guidance(self) -> tuple[str, ...]:
@@ -346,6 +474,24 @@ class DynamicMasScheduler:
                 review_id="parent-final-gate",
             )
         with self._attention_lock:
+            attention_fingerprint = self._attention_fingerprint(
+                session_id=self.project_id,
+                decision=decision,
+            )
+            if attention_fingerprint in self._attention_fingerprints:
+                self._duplicate_attention_suppressed += 1
+                return SchedulerOutcome(
+                    disposition="parent_gate_duplicate_allow",
+                    session_id=parent.session_id,
+                    review_id="parent-final-gate",
+                )
+            if self._attention_requests_used >= self.max_attention_requests:
+                return SchedulerOutcome(
+                    disposition="parent_gate_budget_allow",
+                    session_id=parent.session_id,
+                    review_id="parent-final-gate",
+                )
+            self._attention_requests_used += 1
             try:
                 answer = self.requester.answer(
                     str(decision.question),
@@ -357,13 +503,6 @@ class DynamicMasScheduler:
                     1_600,
                 )
                 decision_id = DecisionLedger.new_id()
-                receipt = self.control_plane.deliver(
-                    parent,
-                    decision_id=decision_id,
-                    guidance=guidance,
-                    route="parent_integration",
-                    scope="project",
-                )
                 self.decision_ledger.append(
                     DecisionRecord(
                         decision_id=decision_id,
@@ -373,9 +512,27 @@ class DynamicMasScheduler:
                         provenance="luna_requester_channel",
                         validity="project_episode",
                         reversible=True,
-                        delivery_receipts=(str(receipt["receipt_id"]),),
                     )
                 )
+                receipt = self.control_plane.deliver(
+                    parent,
+                    decision_id=decision_id,
+                    guidance=guidance,
+                    route="parent_integration",
+                    scope="project",
+                )
+                self.decision_ledger.append_delivery(
+                    DecisionDeliveryRecord(
+                        decision_id=decision_id,
+                        delivery_receipt_id=str(receipt["receipt_id"]),
+                        invalidation_receipt_id="",
+                        target_session_id=parent.session_id,
+                        review_id="parent-final-gate",
+                        control_epoch=int(receipt["control_epoch"]),
+                        guidance_sha256=str(receipt["guidance_sha256"]),
+                    )
+                )
+                self._attention_fingerprints.add(attention_fingerprint)
                 return SchedulerOutcome(
                     disposition="parent_gate_guidance",
                     session_id=parent.session_id,
@@ -386,6 +543,13 @@ class DynamicMasScheduler:
                     delivery_receipts=(str(receipt["receipt_id"]),),
                 )
             except Exception as exc:
+                state = self.control_plane.read(parent.session_id)
+                if any(
+                    item.get("decision_id") == locals().get("decision_id", "")
+                    for item in state.get("delivery_receipts", [])
+                    if isinstance(item, Mapping)
+                ):
+                    raise
                 return SchedulerOutcome(
                     disposition="parent_gate_allow",
                     session_id=parent.session_id,
@@ -394,11 +558,68 @@ class DynamicMasScheduler:
                 )
 
     def diagnostics(self) -> dict[str, Any]:
+        sessions = self.registry.snapshot()["sessions"]
         workers = [
-            binding
-            for binding in self.registry.snapshot()["sessions"].values()
-            if binding["role"] == "worker"
+            binding for binding in sessions.values() if binding["role"] == "worker"
         ]
+
+        # Completion is admissible only when every deterministic delivery was
+        # consumed at an exact model boundary. A completed child cannot consume
+        # a targeted-repair delivery itself; in that one explicit case, an
+        # applied Parent integration delivery for the same decision is the
+        # closure receipt. This makes the fallback inspectable without
+        # pretending that the terminal child resumed.
+        deliveries: dict[str, tuple[Mapping[str, Any], Mapping[str, Any]]] = {}
+        applications: dict[str, tuple[Mapping[str, Any], Mapping[str, Any]]] = {}
+        duplicate_delivery_receipts = 0
+        duplicate_application_receipts = 0
+        for binding in sessions.values():
+            state = self.control_plane.read(str(binding["session_id"]))
+            for receipt in state.get("delivery_receipts", []):
+                if not isinstance(receipt, Mapping):
+                    duplicate_delivery_receipts += 1
+                    continue
+                receipt_id = str(receipt.get("receipt_id", ""))
+                if not receipt_id or receipt_id in deliveries:
+                    duplicate_delivery_receipts += 1
+                    continue
+                deliveries[receipt_id] = (binding, receipt)
+            for receipt in state.get("application_receipts", []):
+                if not isinstance(receipt, Mapping):
+                    duplicate_application_receipts += 1
+                    continue
+                delivery_id = str(receipt.get("delivery_receipt_id", ""))
+                if not delivery_id or delivery_id in applications:
+                    duplicate_application_receipts += 1
+                    continue
+                applications[delivery_id] = (binding, receipt)
+
+        parent_applied_decisions = {
+            str(delivery.get("decision_id", ""))
+            for delivery_id, (binding, delivery) in deliveries.items()
+            if binding.get("role") == "parent"
+            and delivery.get("route") == "parent_integration"
+            and delivery_id in applications
+        }
+        fallback_delivery_ids = {
+            delivery_id
+            for delivery_id, (binding, delivery) in deliveries.items()
+            if delivery_id not in applications
+            and binding.get("role") == "worker"
+            and binding.get("status") in TERMINAL_STATUSES
+            and delivery.get("route") == "targeted_repair"
+            and str(delivery.get("decision_id", "")) in parent_applied_decisions
+        }
+        unresolved_delivery_ids = sorted(
+            set(deliveries) - set(applications) - fallback_delivery_ids
+        )
+        orphan_application_ids = sorted(set(applications) - set(deliveries))
+        receipt_closure_valid = not (
+            unresolved_delivery_ids
+            or orphan_application_ids
+            or duplicate_delivery_receipts
+            or duplicate_application_receipts
+        )
         return {
             "schema_version": "1.0",
             "kind": "dynamic_mas_diagnostics",
@@ -409,6 +630,19 @@ class DynamicMasScheduler:
                 for binding in workers
             ),
             "processed_reviews": len(self._processed_reviews),
+            "max_attention_requests": self.max_attention_requests,
+            "attention_requests_used": self._attention_requests_used,
+            "duplicate_attention_suppressed": self._duplicate_attention_suppressed,
+            "attention_budget_enforced": True,
             "attention_channel_serialized": True,
+            "delivery_receipts": len(deliveries),
+            "application_receipts": len(applications),
+            "targeted_repair_parent_fallbacks": len(fallback_delivery_ids),
+            "unresolved_delivery_receipts": len(unresolved_delivery_ids),
+            "orphan_application_receipts": len(orphan_application_ids),
+            "duplicate_delivery_receipts": duplicate_delivery_receipts,
+            "duplicate_application_receipts": duplicate_application_receipts,
+            "unresolved_delivery_receipt_ids": unresolved_delivery_ids[:16],
+            "receipt_closure_valid": receipt_closure_valid,
             "raw_trace_included": False,
         }

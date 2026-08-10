@@ -78,10 +78,10 @@ local release candidate rather than a public release artifact.
 6. Compare bootstrap and canonical capability manifests with
    `scripts/compare_capabilities.py`, then run the single authorized API canary.
 
-Steps 1--6 were exercised, but the API canary did not pass the release
-acceptance contract; see the audit below. A clean post-remediation candidate and
-digest now exist locally. An accepted real canary and a final signed/public
-digest remain outstanding.
+Steps 1--6 were exercised. After the rejected pre-remediation attempt described
+below, authorized representative single and MAS episodes passed the functional
+post-remediation acceptance contract. A final signed/public digest remains
+outstanding.
 
 ## Model-backed canary audit
 
@@ -108,10 +108,10 @@ supervisor, zero agent messages, and zero exact dummy-secret matches across all
 SecretRef serialization and prove that the resolved values do not enter
 `openclaw.json`.
 
-This remediation has not been exercised by a second network-capable episode;
-the one-real-canary guard remains consumed. A second provider run therefore
-requires explicit user authorization and must repeat the exact-secret scan and
-full sealed-grader acceptance gate. Also, SecretRef prevents accidental
+This remediation was subsequently exercised by one representative single-agent
+and one dynamic-MAS network-capable episode. Both completed the runtime,
+artifact, exact-receipt, exact-secret scan, and sealed-grader handoff; neither is
+a full-suite score-parity claim. SecretRef prevents accidental
 persistence but does not prevent arbitrary worker code running under the same
 container uid from deliberately reading the mounted file. Treat a credential
 broker or a separate uid/process boundary as a distinct privacy-hardening
@@ -144,9 +144,9 @@ explicit residual supply-chain risk; replacing it requires a separately pinned
 and verified CA source, not an unreviewed convenience image. `Check-Valid-Until`
 is disabled only because an immutable historical snapshot naturally expires.
 
-Node 22.22.1 and OpenClaw 2026.3.11 are a pinned, no-model-tested pair for this
-staging image, not a promise that arbitrary Node/OpenClaw upgrades are
-compatible or that the model-backed Gateway canary has passed. Native
+Node 22.22.1 and OpenClaw 2026.3.11 are a pinned, representative-canary-tested
+pair for this staging image, not a promise that arbitrary Node/OpenClaw upgrades
+are compatible. Native
 Gateway children depend on the exact delegation -> child completion -> same
 Parent integration protocol. A new OpenClaw version can change session files,
 Gateway flags, plugin loading, model configuration, or completion notices even
@@ -157,9 +157,9 @@ Gateway canary.
 The current locked graph also emits an engine warning: `osc-progress@0.3.2`
 declares Node 24 or newer while this image intentionally uses Node 22. The
 package installs because npm treats the declaration as a warning, and the
-no-model version/Gateway-help checks pass, but that is not proof that every
-optional OpenClaw path is compatible. This mismatch must remain visible until
-the real Gateway canary passes or the pinned pair is replaced deliberately.
+no-model version/Gateway-help checks and representative Gateway canaries pass,
+but that is not proof that every optional OpenClaw path is compatible. This
+mismatch must remain visible until the pinned pair is replaced deliberately.
 
 The participant image embeds the expected task checksum/provenance contracts,
 but not the public task bundle. Validation and episodes mount `tasks/` read-only

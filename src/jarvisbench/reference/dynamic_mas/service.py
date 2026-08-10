@@ -61,34 +61,31 @@ class DynamicMasService:
         self.poll_once()
         self._write_diagnostics()
 
-    def _read_new_events(self) -> list[dict[str, Any]]:
+    def _read_new_event_lines(self) -> list[bytes]:
+        """Read complete physical lines without committing their offsets.
+
+        ``self._offset`` is the last successfully processed byte, not merely the
+        last byte observed on disk.  Keeping the read and commit steps separate
+        ensures a scheduler failure leaves that event (and every later event in
+        the same chunk) available for the next poll.
+        """
+
         if self.events_path.is_symlink() or not self.events_path.is_file():
             raise DynamicMasContractError("project event bus is unsafe")
         size = self.events_path.stat().st_size
         if size < self._offset:
             raise DynamicMasContractError("append-only project event bus was truncated")
         if size == self._offset:
+            self._remainder = b""
             return []
         with self.events_path.open("rb") as stream:
             stream.seek(self._offset)
             chunk = stream.read()
-        self._offset = size
-        raw = self._remainder + chunk
-        lines = raw.split(b"\n")
+        lines = chunk.split(b"\n")
         self._remainder = lines.pop()
         if len(self._remainder) > MAX_EVENT_LINE_BYTES:
             raise DynamicMasContractError("unterminated project event exceeds its bound")
-        result: list[dict[str, Any]] = []
-        for line in lines:
-            if not line:
-                continue
-            if len(line) > MAX_EVENT_LINE_BYTES:
-                raise DynamicMasContractError("project event exceeds its bound")
-            value = json.loads(line)
-            if not isinstance(value, dict):
-                raise DynamicMasContractError("project event is not an object")
-            result.append(value)
-        return result
+        return lines
 
     def poll_once(self) -> int:
         self.scheduler.sync_registry(
@@ -97,8 +94,20 @@ class DynamicMasService:
             registry_path=self.registry_path,
         )
         count = 0
-        for event in self._read_new_events():
+        for line in self._read_new_event_lines():
+            next_offset = self._offset + len(line) + 1
+            if not line:
+                self._offset = next_offset
+                continue
+            if len(line) > MAX_EVENT_LINE_BYTES:
+                raise DynamicMasContractError("project event exceeds its bound")
+            event = json.loads(line)
+            if not isinstance(event, dict):
+                raise DynamicMasContractError("project event is not an object")
             self.scheduler.process_event(event)
+            # Commit only after the exact event completed successfully.  If
+            # processing raises, this line and all following lines are reread.
+            self._offset = next_offset
             count += 1
         return count
 

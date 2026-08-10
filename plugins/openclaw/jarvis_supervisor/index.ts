@@ -57,7 +57,7 @@ const pendingDeliveries = new Map<string, PendingDelivery>();
 const injectedBySession = new Map<string, Injection>();
 const appliedReceiptIds = new Set<string>();
 
-type SessionIdentity = {
+export type SessionIdentity = {
   project_id: string;
   agent_id: string;
   session_id: string;
@@ -99,8 +99,12 @@ type PendingAck = {
   ackNonce: string;
   batchActionFingerprint: string;
   actionFingerprints: string[];
+  deliveryReceiptId: string;
+  guidanceSha256: string;
+  envelopeSha256: string;
   expectedDeliveries: number;
   deliveredToolCallIds: Set<string>;
+  deliveryEventEmitted: boolean;
   acknowledged: boolean;
 };
 
@@ -110,6 +114,11 @@ type PendingDelivery = {
   actionId: string;
   envelope: string;
   envelopeSha256: string;
+  decisionId: string;
+  deliveryReceiptId: string;
+  controlEpoch: number;
+  nonce: string;
+  guidanceSha256: string;
 };
 
 type Injection = {
@@ -168,6 +177,17 @@ function runKey(event: JsonRecord, ctx: JsonRecord): string {
 
 function isParentSession(sessionIdOrKey: string): boolean {
   return sessionIdOrKey === PARENT_SESSION_ID || sessionIdOrKey === PARENT_SESSION_KEY;
+}
+
+export function isExecutionManagerSession(
+  sessionIdOrKey: string,
+  identity: SessionIdentity | null = resolveMasSessionIdentity(sessionIdOrKey),
+): boolean {
+  // A registered role is authoritative. This keeps the MAS Parent exempt while
+  // allowing a fixed single worker to use an otherwise conventional session id
+  // such as "chat". The raw sentinel is only a bootstrap fallback for an
+  // unregistered execution-manager process.
+  return identity ? identity.role === "parent" : isParentSession(sessionIdOrKey);
 }
 
 function readJson(target: string): JsonRecord | null {
@@ -368,7 +388,9 @@ export function exactReviewResponse(
     value.decision_id &&
     typeof value.guidance === "string" &&
     value.guidance &&
-    value.guidance_sha256 === sha256(value.guidance)
+    value.guidance_sha256 === sha256(value.guidance) &&
+    typeof value.delivery_receipt_id === "string" &&
+    /^delivery-[a-f0-9]{24}$/.test(value.delivery_receipt_id)
     ? value
     : null;
 }
@@ -503,6 +525,7 @@ async function finalizeBatch(batch: ReviewBatch): Promise<void> {
   batch.expectedEventSeq = expectedEventSeq;
   const deadline = Date.now() + REVIEW_TIMEOUT_MS;
   let response: JsonRecord | null = null;
+  let responseState: JsonRecord | null = null;
   while (Date.now() < deadline) {
     const state = readControl(batch.sessionId);
     const responses = Array.isArray(state.review_responses) ? state.review_responses : [];
@@ -521,7 +544,10 @@ async function finalizeBatch(batch: ReviewBatch): Promise<void> {
       actionIds: batch.actions.map((item) => item.actionId),
       actionFingerprints: batch.actions.map((item) => item.actionFingerprint),
     });
-    if (response) break;
+    if (response) {
+      responseState = state;
+      break;
+    }
     if (
       Number.isInteger(state.control_epoch) &&
       (Number(state.control_epoch) !== batch.epoch || state.nonce !== batch.nonce)
@@ -564,6 +590,38 @@ async function finalizeBatch(batch: ReviewBatch): Promise<void> {
     return;
   }
   const envelope = interruptEnvelope(response, batch);
+  const deliveryReceiptId = String(response.delivery_receipt_id || "");
+  const deliveryRecords = Array.isArray(responseState?.delivery_receipts)
+    ? responseState.delivery_receipts.map(asRecord).filter(Boolean)
+    : [];
+  const exactDelivery = deliveryRecords.find(
+    (item) =>
+      item?.receipt_id === deliveryReceiptId &&
+      item?.decision_id === response?.decision_id &&
+      item?.target_session_id === batch.sessionId &&
+      item?.control_epoch === response?.next_control_epoch &&
+      item?.nonce === response?.next_nonce &&
+      item?.guidance_sha256 === response?.guidance_sha256,
+  );
+  if (!exactDelivery) {
+    appendEvent("jarvis.review.failed_closed", batch.sessionId, {
+      run_id: batch.runId,
+      turn_id: batch.turnId,
+      batch_id: batch.batchId,
+      action_id: batch.actions[0].actionId,
+      review_id: batch.reviewId,
+      expected_event_seq: expectedEventSeq,
+      reason: "delivery_receipt_missing_or_stale",
+    });
+    for (const action of batch.actions) {
+      action.resolve({
+        block: true,
+        blockReason:
+          "JARVIS_CONTROL_UNAVAILABLE: guidance lacked an exact delivery receipt; do not retry this old proposal.",
+      });
+    }
+    return;
+  }
   const pending: PendingAck = {
     sessionId: batch.sessionId,
     judgmentId: String(response.decision_id),
@@ -573,8 +631,12 @@ async function finalizeBatch(batch: ReviewBatch): Promise<void> {
       batch.actions.map((item) => item.actionFingerprint),
     ),
     actionFingerprints: batch.actions.map((item) => item.actionFingerprint),
+    deliveryReceiptId,
+    guidanceSha256: String(response.guidance_sha256),
+    envelopeSha256: sha256(envelope),
     expectedDeliveries: batch.actions.length,
     deliveredToolCallIds: new Set<string>(),
+    deliveryEventEmitted: false,
     acknowledged: false,
   };
   pendingAcks.set(batch.sessionId, pending);
@@ -589,15 +651,32 @@ async function finalizeBatch(batch: ReviewBatch): Promise<void> {
     next_control_epoch: response.next_control_epoch,
     action_fingerprints: pending.actionFingerprints,
   });
-  for (const action of batch.actions) {
+  for (const [index, action] of batch.actions.entries()) {
+    const persistedEnvelope =
+      index === 0
+        ? envelope
+        : JSON.stringify({
+            kind: "jarvis_batch_sibling_invalidated",
+            judgment_id: response.decision_id,
+            session_id: batch.sessionId,
+            control_epoch: response.next_control_epoch,
+            action_id: action.actionId,
+            action_fingerprint: action.actionFingerprint,
+            guidance_delivery: "canonical_first_batch_result",
+          });
     pendingDeliveries.set(action.toolCallId, {
       sessionId: batch.sessionId,
       toolCallId: action.toolCallId,
       actionId: action.actionId,
-      envelope,
-      envelopeSha256: sha256(envelope),
+      envelope: persistedEnvelope,
+      envelopeSha256: sha256(persistedEnvelope),
+      decisionId: String(response.decision_id),
+      deliveryReceiptId,
+      controlEpoch: Number(response.next_control_epoch),
+      nonce: String(response.next_nonce),
+      guidanceSha256: String(response.guidance_sha256),
     });
-    action.resolve({ block: true, blockReason: envelope });
+    action.resolve({ block: true, blockReason: persistedEnvelope });
   }
 }
 
@@ -627,7 +706,40 @@ function holdAction(
         state: "collecting",
       };
       batches.set(key, batch);
-      setTimeout(() => void finalizeBatch(batch as ReviewBatch), BATCH_SETTLE_MS);
+      const exactBatch = batch as ReviewBatch;
+      const exactKey = key;
+      setTimeout(() => {
+        void finalizeBatch(exactBatch).catch((error: unknown) => {
+          batches.delete(exactKey);
+          const pending = pendingAcks.get(exactBatch.sessionId);
+          if (pending && !pending.acknowledged) {
+            pendingAcks.delete(exactBatch.sessionId);
+          }
+          for (const action of exactBatch.actions) {
+            pendingDeliveries.delete(action.toolCallId);
+            action.resolve({
+              block: true,
+              blockReason:
+                "JARVIS_CONTROL_UNAVAILABLE: deterministic batch finalization failed; do not retry this old proposal.",
+            });
+          }
+          try {
+            appendEvent("jarvis.review.failed_closed", exactBatch.sessionId, {
+              run_id: exactBatch.runId,
+              turn_id: exactBatch.turnId,
+              batch_id: exactBatch.batchId,
+              action_id: exactBatch.actions[0]?.actionId || "batch-finalization",
+              review_id: exactBatch.reviewId,
+              reason: "batch_finalization_error",
+              error_type:
+                error instanceof Error ? error.constructor.name : "UnknownError",
+            });
+          } catch {
+            // Held promises are already resolved fail-closed. Event persistence
+            // failure must never leave the worker or unrelated sessions hung.
+          }
+        });
+      }, BATCH_SETTLE_MS);
     }
     batch.actions.push({ ...action, resolve });
   });
@@ -635,6 +747,12 @@ function holdAction(
 
 function pendingGuidance(state: JsonRecord): JsonRecord[] {
   if (!Array.isArray(state.guidance_queue)) return [];
+  const persistedApplications = new Set(
+    (Array.isArray(state.application_receipts) ? state.application_receipts : [])
+      .map(asRecord)
+      .filter((item): item is JsonRecord => Boolean(item))
+      .map((item) => String(item.delivery_receipt_id || "")),
+  );
   return state.guidance_queue
     .map(asRecord)
     .filter((item): item is JsonRecord => Boolean(item))
@@ -643,6 +761,7 @@ function pendingGuidance(state: JsonRecord): JsonRecord[] {
         item.control_epoch === state.control_epoch &&
         item.nonce === state.nonce &&
         typeof item.receipt_id === "string" &&
+        !persistedApplications.has(String(item.receipt_id)) &&
         !appliedReceiptIds.has(item.receipt_id),
     );
 }
@@ -742,6 +861,21 @@ const plugin = {
             control_epoch: pending.controlEpoch,
             batch_action_fingerprint: pending.batchActionFingerprint,
           });
+          if (!appliedReceiptIds.has(pending.deliveryReceiptId)) {
+            const modelBoundaryId = `tool-continuation-${pending.judgmentId}`;
+            appendEvent("control.guidance.applied", sessionId, {
+              action_id: "guidance-application",
+              delivery_receipt_id: pending.deliveryReceiptId,
+              decision_id: pending.judgmentId,
+              model_boundary_id: modelBoundaryId,
+              control_epoch: pending.controlEpoch,
+              nonce: pending.ackNonce,
+              guidance_sha256: pending.guidanceSha256,
+              envelope_sha256: pending.envelopeSha256,
+              application_basis: "exact_tool_result_continuation_ack",
+            });
+            appliedReceiptIds.add(pending.deliveryReceiptId);
+          }
           const details = {
             status: "acknowledged",
             judgment_id: pending.judgmentId,
@@ -897,7 +1031,7 @@ const plugin = {
           review_classification: classification.reason,
         });
 
-        if (!AUTONOMOUS_REVIEW || isParentSession(sessionId)) {
+        if (!AUTONOMOUS_REVIEW || isExecutionManagerSession(sessionId, identity)) {
           return undefined;
         }
         // sessions_spawn registers children dynamically.  A child can reach
@@ -1005,6 +1139,25 @@ const plugin = {
           envelope_sha256: delivery.envelopeSha256,
           exact: true,
         });
+        if (
+          pending &&
+          !pending.deliveryEventEmitted &&
+          pending.deliveredToolCallIds.size === pending.expectedDeliveries
+        ) {
+          pending.deliveryEventEmitted = true;
+          appendEvent("control.guidance.delivered", delivery.sessionId, {
+            action_id: "guidance-delivery",
+            tool_call_ids: [...pending.deliveredToolCallIds].sort(),
+            delivery_receipt_id: delivery.deliveryReceiptId,
+            decision_id: delivery.decisionId,
+            control_epoch: delivery.controlEpoch,
+            nonce: delivery.nonce,
+            guidance_sha256: delivery.guidanceSha256,
+            envelope_sha256: pending.envelopeSha256,
+            delivery_route: "held_action_batch_tool_results",
+            exact: true,
+          });
+        }
         pendingDeliveries.delete(toolCallId);
         return undefined;
       },

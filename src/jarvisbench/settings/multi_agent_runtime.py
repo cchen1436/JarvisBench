@@ -7,6 +7,7 @@ import shutil
 import signal
 import socket
 import subprocess
+import sys
 import time
 import uuid
 from importlib import resources
@@ -28,6 +29,27 @@ PARENT_SESSION_KEY = "agent:main:chat"
 PROTOCOL = ("parent_delegation", "children_complete", "parent_integration")
 SUPERVISOR_PLUGIN_FILES = frozenset(
     {"index.ts", "openclaw.plugin.json", "package.json", "read_only_exec.ts"}
+)
+
+_WORKER_ENV_ALLOWLIST = frozenset(
+    {
+        "PATH",
+        "LANG",
+        "LC_ALL",
+        "LC_CTYPE",
+        "TZ",
+        "TMPDIR",
+        "SSL_CERT_FILE",
+        "SSL_CERT_DIR",
+        "NODE_OPTIONS",
+        "NODE_PATH",
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "NO_PROXY",
+        "http_proxy",
+        "https_proxy",
+        "no_proxy",
+    }
 )
 
 
@@ -64,6 +86,8 @@ class MultiAgentRuntimeConfig:
     thinking: str = "provider_default"
     openclaw_executable: str = "openclaw"
     plugin_dir: Path | None = None
+    workspace_root: Path | None = None
+    environment_passthrough: tuple[str, ...] = ()
     poll_seconds: float = 0.2
     project_id: str = ""
 
@@ -72,6 +96,11 @@ class MultiAgentRuntimeConfig:
             raise ValueError("worker_model must use provider/model-id syntax")
         if not self.api_key_env or "=" in self.api_key_env:
             raise ValueError("api_key_env must name one environment variable")
+        if any(
+            not name or "=" in name or "\x00" in name
+            for name in self.environment_passthrough
+        ):
+            raise ValueError("environment_passthrough contains an invalid name")
 
 
 @dataclass(frozen=True)
@@ -218,7 +247,14 @@ class MultiAgentRuntime:
         self.episode_root = Path(config.episode_root)
         self.home = self.episode_root / "private" / "home"
         self.openclaw_home = self.home / ".openclaw"
-        self.workspace = self.episode_root / "workspace"
+        configured_workspace = config.workspace_root or os.environ.get(
+            "JARVISBENCH_WORKSPACE_ROOT"
+        )
+        self.workspace = (
+            Path(configured_workspace)
+            if configured_workspace
+            else self.episode_root / "workspace"
+        )
         self.output = self.episode_root / "output"
         self.control_root = self.episode_root / "private" / "control"
         self.events_root = self.episode_root / "private" / "events"
@@ -256,6 +292,11 @@ class MultiAgentRuntime:
     def _prepare(self) -> None:
         if self.episode_root.exists() and any(self.episode_root.iterdir()):
             raise ValueError("episode_root must be empty for session isolation")
+        if self.workspace.exists() and self.workspace != self.episode_root / "workspace":
+            if self.workspace.is_symlink() or not self.workspace.is_dir():
+                raise ValueError("worker workspace root is unsafe")
+            if any(self.workspace.iterdir()):
+                raise ValueError("worker workspace root must be empty")
         private_root = self.episode_root / "private"
         private_root.mkdir(parents=True, exist_ok=True, mode=0o700)
         private_root.chmod(0o700)
@@ -373,7 +414,10 @@ class MultiAgentRuntime:
         path.chmod(0o600)
 
     def _environment(self, gateway_token: str | None = None) -> dict[str, str]:
-        env = os.environ.copy()
+        allowed = _WORKER_ENV_ALLOWLIST.union(self.config.environment_passthrough)
+        env = {name: value for name, value in os.environ.items() if name in allowed}
+        if self.config.api_key_env in os.environ:
+            env[self.config.api_key_env] = os.environ[self.config.api_key_env]
         env.update(
             {
                 "HOME": str(self.home),
@@ -610,6 +654,9 @@ class MultiAgentRuntime:
             and value.get("attention_channel_serialized") is True
             and value.get("registered_workers") == expected_children
             and value.get("live_updates_before_completion") == expected_children
+            and value.get("receipt_closure_valid") is True
+            and value.get("unresolved_delivery_receipts") == 0
+            and value.get("orphan_application_receipts") == 0
             and value.get("service_errors") == []
             and self._plugin_ready()
         )
@@ -639,18 +686,6 @@ class MultiAgentRuntime:
         port = self._free_port()
         env = self._environment()
         self._configure_openclaw(env, gateway_port=port)
-        service: DynamicMasService | None = None
-        if self.scheduler is not None:
-            service = DynamicMasService(
-                scheduler=self.scheduler,
-                events_path=self.events_path,
-                sessions_root=self.sessions_root,
-                workspace=self.workspace,
-                registry_path=self.registry_path,
-                diagnostics_path=self.output / "dynamic_mas_diagnostics.json",
-                poll_seconds=self.config.poll_seconds,
-            )
-            service.start()
         gateway_command = [
             self.config.openclaw_executable,
             "gateway",
@@ -666,23 +701,37 @@ class MultiAgentRuntime:
             "compact",
         ]
         gateway_log_path = self.logs_root / "gateway.log"
-        gateway_log = gateway_log_path.open("wb")
-        gateway_log_path.chmod(0o600)
         gateway_env = dict(env)
         gateway_env["JARVIS_MAS_PLUGIN_ROLE"] = "gateway"
-        gateway = subprocess.Popen(
-            gateway_command,
-            cwd=self.workspace,
-            env=gateway_env,
-            stdout=gateway_log,
-            stderr=subprocess.STDOUT,
-            start_new_session=True,
-        )
+        service: DynamicMasService | None = None
+        gateway_log: Any | None = None
+        gateway: subprocess.Popen[bytes] | None = None
         delegate_rc = 70
         integration_rc = 71
         discovered = 0
         completed = 0
         try:
+            if self.scheduler is not None:
+                service = DynamicMasService(
+                    scheduler=self.scheduler,
+                    events_path=self.events_path,
+                    sessions_root=self.sessions_root,
+                    workspace=self.workspace,
+                    registry_path=self.registry_path,
+                    diagnostics_path=self.output / "dynamic_mas_diagnostics.json",
+                    poll_seconds=self.config.poll_seconds,
+                )
+                service.start()
+            gateway_log = gateway_log_path.open("wb")
+            gateway_log_path.chmod(0o600)
+            gateway = subprocess.Popen(
+                gateway_command,
+                cwd=self.workspace,
+                env=gateway_env,
+                stdout=gateway_log,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+            )
             ready = False
             for _ in range(120):
                 if gateway.poll() is not None:
@@ -729,16 +778,33 @@ class MultiAgentRuntime:
                     env,
                 )
         finally:
-            if service is not None:
-                service.stop()
-            if gateway.poll() is None:
-                os.killpg(gateway.pid, signal.SIGTERM)
+            primary_error = sys.exc_info()[0] is not None
+            cleanup_errors: list[str] = []
+            if gateway is not None:
                 try:
-                    gateway.wait(timeout=15)
-                except subprocess.TimeoutExpired:
-                    os.killpg(gateway.pid, signal.SIGKILL)
-                    gateway.wait(timeout=5)
-            gateway_log.close()
+                    if gateway.poll() is None:
+                        os.killpg(gateway.pid, signal.SIGTERM)
+                        try:
+                            gateway.wait(timeout=15)
+                        except subprocess.TimeoutExpired:
+                            os.killpg(gateway.pid, signal.SIGKILL)
+                            gateway.wait(timeout=5)
+                except Exception as exc:
+                    cleanup_errors.append(f"gateway:{type(exc).__name__}")
+            if service is not None:
+                try:
+                    # Stop the event source first, then perform the service's
+                    # final drain so late Parent/child receipts cannot be lost.
+                    service.stop()
+                except Exception as exc:
+                    cleanup_errors.append(f"control_service:{type(exc).__name__}")
+            if gateway_log is not None:
+                try:
+                    gateway_log.close()
+                except Exception as exc:
+                    cleanup_errors.append(f"gateway_log:{type(exc).__name__}")
+            if cleanup_errors and not primary_error:
+                raise RuntimeError("MAS cleanup failed: " + ",".join(cleanup_errors))
 
         results_present = self._export_results()
         expected = int(self.manifest["episode"]["worker_count"])

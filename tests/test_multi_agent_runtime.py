@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import hashlib
 import os
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -434,6 +436,7 @@ def test_completed_child_decision_has_parent_fallback(tmp_path: Path):
         def answer(self, _question: str, _context: str) -> str:
             raise AssertionError("requester should not be called")
 
+    ledger_path = tmp_path / "private" / "ledger.jsonl"
     scheduler = DynamicMasScheduler(
         project_id=project_id,
         controller=NeverController(),
@@ -441,7 +444,7 @@ def test_completed_child_decision_has_parent_fallback(tmp_path: Path):
         requester_context_loader=lambda: "",
         registry=registry,
         control_plane=store,
-        decision_ledger=DecisionLedger(tmp_path / "private" / "ledger.jsonl"),
+        decision_ledger=DecisionLedger(ledger_path),
     )
     parent = _binding(project_id, agent="parent", session="chat", workstream="", role="parent")
     child = _binding(
@@ -462,6 +465,158 @@ def test_completed_child_decision_has_parent_fallback(tmp_path: Path):
     assert outcome.routed_sessions == ("child-a", "chat")
     assert store.read("child-a")["guidance_queue"][0]["route"] == "targeted_repair"
     assert store.read("chat")["guidance_queue"][0]["route"] == "parent_integration"
+    assert scheduler.diagnostics()["receipt_closure_valid"] is False
+
+    parent_state = store.read("chat")
+    parent_delivery = parent_state["delivery_receipts"][0]
+    scheduler.process_event(
+        {
+            "seq": 1,
+            "type": "control.guidance.applied",
+            "payload": {
+                "project_id": project_id,
+                "session_id": "chat",
+                "delivery_receipt_id": parent_delivery["receipt_id"],
+                "model_boundary_id": "parent-integration-terminal-fallback",
+                "control_epoch": parent_state["control_epoch"],
+                "nonce": parent_state["nonce"],
+                "guidance_sha256": parent_delivery["guidance_sha256"],
+            },
+        }
+    )
+    diagnostics = scheduler.diagnostics()
+    assert diagnostics["delivery_receipts"] == 2
+    assert diagnostics["application_receipts"] == 1
+    assert diagnostics["targeted_repair_parent_fallbacks"] == 1
+    assert diagnostics["unresolved_delivery_receipts"] == 0
+    assert diagnostics["receipt_closure_valid"] is True
+    ledger_records = [json.loads(line) for line in ledger_path.read_text().splitlines()]
+    deliveries = [item for item in ledger_records if item["kind"] == "guidance_delivery"]
+    applications = [
+        item for item in ledger_records if item["kind"] == "guidance_application"
+    ]
+    assert len(deliveries) == 2
+    assert len(applications) == 1
+    assert applications[0]["delivery_receipt_id"] == parent_delivery["receipt_id"]
+    assert applications[0]["delivery_receipt_id"] in {
+        item["delivery_receipt_id"] for item in deliveries
+    }
+
+
+def test_dynamic_admission_requires_exact_receipt_closure(tmp_path: Path):
+    runtime = MultiAgentRuntime(
+        MultiAgentRuntimeConfig(
+            task_dir=_task(tmp_path),
+            episode_root=tmp_path / "episode-admission",
+            worker_model="provider/model",
+        )
+    )
+    # Admission only needs to distinguish an instrumented run from baseline;
+    # the diagnostics themselves remain the source of truth in this unit test.
+    runtime.scheduler = object()  # type: ignore[assignment]
+    runtime.output.mkdir(parents=True)
+    runtime.control_root.mkdir(parents=True)
+    (runtime.control_root / "plugin_ready.json").write_text(
+        json.dumps(
+            {
+                "ready": True,
+                "plugin_id": "jarvisbench-mas-supervisor",
+                "control_protocol_version": "1.0-release",
+                "project_id": runtime.project_id,
+                "hooks_registration_complete": True,
+                "ready_event_seq": 1,
+            }
+        ),
+        encoding="utf-8",
+    )
+    diagnostics = {
+        "project_id": runtime.project_id,
+        "raw_trace_included": False,
+        "attention_channel_serialized": True,
+        "registered_workers": 2,
+        "live_updates_before_completion": 2,
+        "receipt_closure_valid": True,
+        "unresolved_delivery_receipts": 0,
+        "orphan_application_receipts": 0,
+        "service_errors": [],
+    }
+    path = runtime.output / "dynamic_mas_diagnostics.json"
+    path.write_text(json.dumps(diagnostics), encoding="utf-8")
+    assert runtime._dynamic_admission(2) is True
+
+    diagnostics["receipt_closure_valid"] = False
+    diagnostics["unresolved_delivery_receipts"] = 1
+    path.write_text(json.dumps(diagnostics), encoding="utf-8")
+    assert runtime._dynamic_admission(2) is False
+
+
+def test_completed_child_project_decision_routes_only_to_parent(tmp_path: Path):
+    project_id = "project-terminal-project-scope"
+    registry = DynamicChildRegistry(project_id=project_id)
+    store = SessionControlPlane(tmp_path / "control", project_id=project_id)
+
+    class NeverController:
+        def decide(self, _candidate):
+            return AttentionDecision(False, "unused")
+
+    class NeverRequester:
+        def answer(self, _question: str, _context: str) -> str:
+            raise AssertionError("requester should not be called")
+
+    scheduler = DynamicMasScheduler(
+        project_id=project_id,
+        controller=NeverController(),
+        requester=NeverRequester(),
+        requester_context_loader=lambda: "",
+        registry=registry,
+        control_plane=store,
+        decision_ledger=DecisionLedger(tmp_path / "private" / "ledger.jsonl"),
+    )
+    scheduler.register(
+        _binding(project_id, agent="parent", session="chat", workstream="", role="parent")
+    )
+    scheduler.register(
+        _binding(
+            project_id,
+            agent="worker-1",
+            session="child-a",
+            workstream="analysis",
+            status="completed",
+        )
+    )
+    outcome = scheduler.route_terminal_decision(
+        target_session_id="child-a",
+        decision_id="decision-project-terminal",
+        guidance="Apply this project-wide correction during integration.",
+        scope="project",
+    )
+    assert outcome.routed_sessions == ("chat",)
+    assert store.read("child-a")["delivery_receipts"] == []
+    parent_state = store.read("chat")
+    assert len(parent_state["delivery_receipts"]) == 1
+    parent_delivery = parent_state["delivery_receipts"][0]
+    assert parent_delivery["route"] == "parent_integration"
+
+    scheduler.process_event(
+        {
+            "seq": 1,
+            "type": "control.guidance.applied",
+            "payload": {
+                "project_id": project_id,
+                "session_id": "chat",
+                "delivery_receipt_id": parent_delivery["receipt_id"],
+                "model_boundary_id": "parent-integration-project-scope",
+                "control_epoch": parent_state["control_epoch"],
+                "nonce": parent_state["nonce"],
+                "guidance_sha256": parent_delivery["guidance_sha256"],
+            },
+        }
+    )
+    diagnostics = scheduler.diagnostics()
+    assert diagnostics["delivery_receipts"] == 1
+    assert diagnostics["application_receipts"] == 1
+    assert diagnostics["targeted_repair_parent_fallbacks"] == 0
+    assert diagnostics["receipt_closure_valid"] is True
 
 
 def test_executable_backend_uses_gateway_and_same_parent_session(
@@ -527,6 +682,7 @@ raise SystemExit(2)
             worker_model="provider/model",
             provider_base_url="https://provider.invalid/v1",
             api_key_env="FAKE_WORKER_KEY",
+            environment_passthrough=("FAKE_OPENCLAW_CALLS",),
             openclaw_executable=str(fake),
             poll_seconds=0.025,
         )
@@ -553,3 +709,152 @@ raise SystemExit(2)
         for path in runtime.output.rglob("*")
         if path.is_file()
     )
+
+
+def test_project_attention_budget_is_atomic_across_children(tmp_path: Path):
+    project_id = "project-budget"
+    registry = DynamicChildRegistry(project_id=project_id)
+    store = SessionControlPlane(tmp_path / "control", project_id=project_id)
+
+    class AlwaysAsk:
+        def decide(self, _candidate):
+            return AttentionDecision(True, "choice", "Which option?", "worker")
+
+    class Requester:
+        calls = 0
+
+        def answer(self, _question: str, _context: str) -> str:
+            self.calls += 1
+            return "Use the reversible option."
+
+    requester = Requester()
+    scheduler = DynamicMasScheduler(
+        project_id=project_id,
+        controller=AlwaysAsk(),
+        requester=requester,
+        requester_context_loader=lambda: '{"choice":"reversible"}',
+        registry=registry,
+        control_plane=store,
+        decision_ledger=DecisionLedger(tmp_path / "private" / "ledger.jsonl"),
+        max_attention_requests=1,
+    )
+    events = []
+    for index, session_id in enumerate(("child-a", "child-b"), 1):
+        scheduler.register(
+            _binding(
+                project_id,
+                agent=f"worker-{index}",
+                session=session_id,
+                workstream=f"stream-{index}",
+            )
+        )
+        state = store.read(session_id)
+        review = _review(
+            project_id,
+            session_id,
+            state["control_epoch"],
+            state["nonce"],
+        )
+        events.append(
+            {"seq": 1, "type": "jarvis.review.requested", "payload": review.to_dict()}
+        )
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        outcomes = list(pool.map(scheduler.process_event, events))
+    assert sorted(outcome.disposition for outcome in outcomes if outcome is not None) == [
+        "attention_budget_allow",
+        "interrupt_replan",
+    ]
+    assert requester.calls == 1
+    assert scheduler.diagnostics()["attention_requests_used"] == 1
+    assert sum(store.read(session)["control_epoch"] == 1 for session in ("child-a", "child-b")) == 1
+
+
+def test_duplicate_attention_is_released_and_application_is_ledgered(tmp_path: Path):
+    project_id = "project-deduplicate"
+    registry = DynamicChildRegistry(project_id=project_id)
+    store = SessionControlPlane(tmp_path / "control", project_id=project_id)
+
+    class AlwaysAsk:
+        def decide(self, _candidate):
+            return AttentionDecision(True, "same choice", "Which option?", "worker")
+
+    class Requester:
+        calls = 0
+
+        def answer(self, _question: str, _context: str) -> str:
+            self.calls += 1
+            return "Use option B."
+
+    requester = Requester()
+    ledger_path = tmp_path / "private" / "ledger.jsonl"
+    scheduler = DynamicMasScheduler(
+        project_id=project_id,
+        controller=AlwaysAsk(),
+        requester=requester,
+        requester_context_loader=lambda: '{"choice":"B"}',
+        registry=registry,
+        control_plane=store,
+        decision_ledger=DecisionLedger(ledger_path),
+        max_attention_requests=2,
+    )
+    scheduler.register(
+        _binding(
+            project_id,
+            agent="worker-1",
+            session="child-a",
+            workstream="analysis",
+        )
+    )
+    initial = store.read("child-a")
+    first = _review(
+        project_id,
+        "child-a",
+        initial["control_epoch"],
+        initial["nonce"],
+    )
+    first_outcome = scheduler.process_event(
+        {"seq": 1, "type": "jarvis.review.requested", "payload": first.to_dict()}
+    )
+    assert first_outcome is not None
+    assert first_outcome.disposition == "interrupt_replan"
+
+    delivered = store.read("child-a")
+    receipt = delivered["delivery_receipts"][0]
+    scheduler.process_event(
+        {
+            "seq": 2,
+            "type": "control.guidance.applied",
+            "payload": {
+                "project_id": project_id,
+                "session_id": "child-a",
+                "delivery_receipt_id": receipt["receipt_id"],
+                "model_boundary_id": "tool-continuation-1",
+                "control_epoch": delivered["control_epoch"],
+                "nonce": delivered["nonce"],
+                "guidance_sha256": receipt["guidance_sha256"],
+            },
+        }
+    )
+    applied = store.read("child-a")
+    assert len(applied["application_receipts"]) == 1
+    assert applied["guidance_queue"] == []
+
+    second = replace(
+        first,
+        turn_id="turn-2",
+        batch_id="batch-child-a-2",
+        review_id="review-child-a-2",
+        control_epoch=applied["control_epoch"],
+        nonce=applied["nonce"],
+        expected_event_seq=3,
+    )
+    second_outcome = scheduler.process_event(
+        {"seq": 3, "type": "jarvis.review.requested", "payload": second.to_dict()}
+    )
+    assert second_outcome is not None
+    assert second_outcome.disposition == "duplicate_attention_allow"
+    assert requester.calls == 1
+    assert scheduler.diagnostics()["duplicate_attention_suppressed"] == 1
+    records = [json.loads(line) for line in ledger_path.read_text().splitlines()]
+    assert any(record.get("kind") == "guidance_application" for record in records)

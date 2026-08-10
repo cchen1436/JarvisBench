@@ -229,6 +229,7 @@ class SessionControlPlane:
         next_nonce: str,
         decision_id: str = "",
         guidance: str = "",
+        delivery_receipt_id: str = "",
     ) -> dict[str, Any]:
         return {
             "schema_version": "1.0",
@@ -251,6 +252,7 @@ class SessionControlPlane:
             "decision_id": decision_id,
             "guidance": guidance,
             "guidance_sha256": sha256_text(guidance) if guidance else "",
+            "delivery_receipt_id": delivery_receipt_id,
             "created_at": utc_now(),
         }
 
@@ -278,13 +280,24 @@ class SessionControlPlane:
             state = self._read_unlocked(review.session_id)
             self._assert_review(state, review)
             next_nonce = self._nonce()
+            next_epoch = review.control_epoch + 1
+            state["control_epoch"] = next_epoch
+            state["nonce"] = next_nonce
+            delivery = self._queue_delivery(
+                state,
+                decision_id=exact_decision,
+                guidance=clean_guidance,
+                route="next_model_boundary",
+                scope="worker",
+            )
             response = self._response(
                 review,
                 decision="interrupt_replan",
-                next_epoch=review.control_epoch + 1,
+                next_epoch=next_epoch,
                 next_nonce=next_nonce,
                 decision_id=exact_decision,
                 guidance=clean_guidance,
+                delivery_receipt_id=str(delivery["receipt_id"]),
             )
             invalidation = {
                 "schema_version": "1.0",
@@ -297,26 +310,19 @@ class SessionControlPlane:
                 "action_ids": list(review.action_ids),
                 "action_fingerprints": list(review.action_fingerprints),
                 "prior_epoch": review.control_epoch,
-                "new_epoch": review.control_epoch + 1,
+                "new_epoch": next_epoch,
                 "prior_nonce_sha256": sha256_text(review.nonce),
                 "new_nonce": next_nonce,
+                "delivery_receipt_id": delivery["receipt_id"],
+                "guidance_sha256": delivery["guidance_sha256"],
                 "created_at": utc_now(),
             }
             state["review_responses"].append(response)
             state["invalidations"].append(invalidation)
             state["review_responses"] = state["review_responses"][-MAX_HISTORY:]
             state["invalidations"] = state["invalidations"][-MAX_HISTORY:]
-            state["control_epoch"] = review.control_epoch + 1
-            state["nonce"] = next_nonce
             state["active_review"] = None
             state["pause"] = {"active": False, "reason": "", "source": "dynamic_mas_split"}
-            self._queue_delivery(
-                state,
-                decision_id=exact_decision,
-                guidance=clean_guidance,
-                route="next_model_boundary",
-                scope="worker",
-            )
             self._write_unlocked(state)
             return copy.deepcopy(invalidation)
 

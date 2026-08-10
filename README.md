@@ -9,10 +9,11 @@ benchmark.
 > **Release status:** this is an engineering staging tree, not a publishable
 > release. It has no top-level public `LICENSE`, per-task attribution still
 > requires final review, the pinned OpenClaw graph has unresolved critical npm
-> advisories, and the only real model-backed canary was rejected by the privacy
-> acceptance gate. A file-backed OpenClaw `SecretRef` remediation now passes an
-> offline Gateway/state scan, but it has not been authorized for a second real
-> canary. Do not redistribute this tree until these blockers are resolved.
+> advisories, and same-UID worker/secret isolation remains a documented privacy
+> limitation. Authorized representative single- and multi-agent reference
+> canaries now pass the functional runtime, artifact, receipt, and sealed-grader
+> acceptance checks. They are not a full benchmark rerun or a score-parity
+> claim. Do not redistribute this tree until the remaining blockers are resolved.
 
 ## Two independent axes
 
@@ -95,10 +96,11 @@ Run the isolated deterministic Track 2 smoke:
 claim an end-to-end benchmark result. See [Quickstart](docs/QUICKSTART.md) for all
 four combinations and controller integration boundaries.
 
-The single-agent release surface currently includes the `SingleAgentWorkerPort`
-contract and deterministic `DryRunWorker`, but no built-in model-backed OpenClaw
-implementation of that port. A participant runtime must supply the port for a
-real single-agent episode; the no-model quickstart does not imply otherwise.
+The single-agent release surface includes both the stable `SingleAgentWorkerPort`
+contract and a built-in loopback-Gateway OpenClaw adapter. `jarvisbench run` can
+execute a baseline or the optional reference controller when provider, model,
+credential, and requester inputs are supplied explicitly. The no-model
+quickstart still makes no end-to-end or score claim.
 
 ## Repository map
 

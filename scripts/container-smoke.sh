@@ -34,7 +34,9 @@ run_node_plugin_tests() {
         --mount "type=bind,src=$repo/configs,dst=/opt/jarvisbench/configs,readonly" \
         --tmpfs /tmp:rw,nosuid,nodev,size=64m,mode=1777 \
         --entrypoint node \
-        "$image" --test /opt/jarvisbench/tests/typescript/plugin_contract.test.ts
+        "$image" --test \
+        /opt/jarvisbench/tests/typescript/plugin_contract.test.ts \
+        /opt/jarvisbench/tests/typescript/plugin_receipt_contract.test.ts
 }
 
 run_secretref_gateway_smoke() {
@@ -49,6 +51,7 @@ run_secretref_gateway_smoke() {
         --mount "type=bind,src=$repo/tasks,dst=/opt/jarvisbench/tasks,readonly" \
         --mount "type=bind,src=$repo/tests/runtime/secretref_gateway_smoke.py,dst=/opt/jarvisbench/secretref_gateway_smoke.py,readonly" \
         --tmpfs /var/lib/jarvisbench:rw,nosuid,nodev,size=256m,uid=10001,gid=10001,mode=0700 \
+        --tmpfs /workspace:rw,nosuid,nodev,size=256m,uid=10001,gid=10001,mode=0700 \
         --tmpfs /tmp:rw,nosuid,nodev,size=64m,mode=1777 \
         --entrypoint python3 \
         "$image" /opt/jarvisbench/secretref_gateway_smoke.py
