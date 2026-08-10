@@ -1,0 +1,51 @@
+{
+  "assets": {
+    "public": [
+      "public/output_contract.json",
+      "public/result_schema.json",
+      "public/sources/relay_launch/current_atlas_brand.md",
+      "public/sources/relay_launch/index.html",
+      "public/sources/relay_launch/northstar_rebrand.md",
+      "public/sources/relay_launch/product_brief.md",
+      "public/sources/relay_launch/release_notes.md",
+      "public/sources/relay_launch/styles.css"
+    ]
+  },
+  "baseline": {
+    "model": "nvidia/azure/anthropic/claude-opus-4-8",
+    "on_question": "continue_with_best_reversible_judgment",
+    "user_availability": "unavailable_after_brief"
+  },
+  "domain": "coding",
+  "episode": {
+    "brief": "Build the public launch site from sources/relay_launch. Implement a responsive, accessible single page with the product workflow, customer proof, pilot pricing, and a working CTA. Use the supplied brand assets consistently, copy the completed site to results/relay_site, record responsive and content checks in results/site_qa.md, and save final.json.",
+    "result_paths": [
+      "results/final.json",
+      "results/site_qa.md",
+      "results/relay_site/index.html",
+      "results/relay_site/styles.css"
+    ]
+  },
+  "runtime": {
+    "cpus": 8,
+    "family": "openclaw_workspace_v1",
+    "memory_gb": 16,
+    "modalities": [
+      "text",
+      "image"
+    ],
+    "worker_timeout_seconds": 1200
+  },
+  "schema_version": "1.0",
+  "source": {
+    "adaptation": "Keeps end-to-end website creation and visual verification, using an original product packet with a late, owner-only rebrand activation decision.",
+    "benchmark": "AgentIF-OneDay",
+    "license": "metadata reference; JarvisBench fixture is original",
+    "revision": "d7d282fc1577",
+    "task_id": "taskif_132",
+    "url": "https://github.com/xbench-ai/AgentIF-OneDay/blob/d7d282fc1577/agentif_oneday_data/data.jsonl"
+  },
+  "summary": "Build and verify a responsive launch site after the asset bundle reveals two complete brand systems and no recorded activation date.",
+  "task_id": "jbv1_product_launch_site",
+  "title": "Product-launch website implementation"
+}

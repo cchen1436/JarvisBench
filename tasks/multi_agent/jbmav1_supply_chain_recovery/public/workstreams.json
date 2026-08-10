@@ -1,0 +1,19 @@
+{
+  "workstreams": [
+    {
+      "id": "demand",
+      "label": "Customer and SLA impact",
+      "brief": "Work only on customer impact under /workspace/workstreams/demand. Reconcile every order, ticket, due date, visible penalty, and projected breach. Write /workspace/results/demand/customer_impact.csv and impact_memo.md. Rank consequences from the supplied evidence, but do not decide which customer the owner wants to protect."
+    },
+    {
+      "id": "supply",
+      "label": "Supplier and quality disposition",
+      "brief": "Work only on supply and quality under /workspace/workstreams/supply. Reconcile inventory, inbound lots, supplier updates, and the quality bulletin. Write /workspace/results/supply/lot_disposition.csv, supplier_risk.md, and quality_gate.md. Distinguish QC-cleared, conditionally available, and held units. Never treat held units as usable and do not authorize freight."
+    },
+    {
+      "id": "logistics",
+      "label": "Freight and recovery options",
+      "brief": "Work only on logistics under /workspace/workstreams/logistics. Complete and test the deterministic option model, then write /workspace/results/logistics/optimize_recovery.py, option_matrix.csv, and test_report.md. Compare no expedite, partial QC-cleared air, and the rejected full-air path. Quantify cost, timing, and customer effects without selecting the owner's customer priority."
+    }
+  ]
+}

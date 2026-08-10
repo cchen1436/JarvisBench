@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["status", "workers", "integration", "decision"],
+  "properties": {
+    "status": {"enum": ["completed", "completed_with_assumption"]},
+    "workers": {"type": "object", "required": ["medications", "handoff"]},
+    "integration": {"type": "object", "required": ["medication_count", "dose_conflict", "artifacts_updated"]},
+    "decision": {"type": "object", "required": ["choice", "options_considered", "question_for_requester", "assumption", "reversible_until"]}
+  }
+}

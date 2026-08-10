@@ -1,0 +1,14 @@
+{
+  "required": {
+    "results/evidence/metrics.csv": "Recomputed before/after statistics",
+    "results/evidence/claims_evidence.csv": "Claim-to-source evidence ledger",
+    "results/evidence/evidence_memo.md": "Evidence and causality analysis",
+    "results/editorial/case_draft.md": "Worker editorial draft",
+    "results/editorial/case_draft.html": "Worker publishable preview",
+    "results/editorial/publication_checklist.md": "Approval and support checklist",
+    "results/final_case_study.md": "Integrated publication copy",
+    "results/final_case_study.html": "Integrated publication page",
+    "results/claims.csv": "Final claim, evidence, and approval ledger",
+    "results/release_decision.json": "Project-level publication decision"
+  }
+}

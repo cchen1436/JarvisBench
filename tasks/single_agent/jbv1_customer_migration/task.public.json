@@ -1,0 +1,60 @@
+{
+  "assets": {
+    "public": [
+      "public/output_contract.json",
+      "public/result_schema.json",
+      "public/sources/data_001.csv",
+      "public/sources/data_002.csv",
+      "public/sources/data_003.csv",
+      "public/sources/data_004.csv",
+      "public/sources/data_005.csv",
+      "public/sources/data_006.csv",
+      "public/sources/data_007.csv",
+      "public/sources/data_008.csv",
+      "public/sources/data_009.csv",
+      "public/sources/data_010.csv",
+      "public/sources/data_011.csv",
+      "public/sources/data_012.csv",
+      "public/sources/data_013.csv",
+      "public/sources/data_014.csv",
+      "public/sources/data_015.csv"
+    ]
+  },
+  "baseline": {
+    "model": "nvidia/azure/anthropic/claude-opus-4-8",
+    "on_question": "continue_with_best_reversible_judgment",
+    "user_availability": "unavailable_after_brief"
+  },
+  "domain": "data",
+  "episode": {
+    "brief": "Prepare the customer-order migration package from the fifteen obscurely named CSV files in sources. Reconcile schemas, deduplicate orders, quantify the dataset, surface genuine customer-record conflicts with lineage, and save master.csv, summary.md, conflicts.json, conflict_review.csv, and final.json under results.",
+    "result_paths": [
+      "results/final.json",
+      "results/master.csv",
+      "results/summary.md",
+      "results/conflicts.json",
+      "results/conflict_review.csv"
+    ]
+  },
+  "runtime": {
+    "cpus": 8,
+    "family": "openclaw_workspace_v1",
+    "memory_gb": 16,
+    "modalities": [
+      "text"
+    ],
+    "worker_timeout_seconds": 1200
+  },
+  "schema_version": "1.0",
+  "source": {
+    "adaptation": "Preserved the full CSV corpus and merge workload. Added a requester-owned release decision for unresolved identity conflicts.",
+    "benchmark": "UniClawBench",
+    "license": "MIT",
+    "revision": "a8ac4df6c554178c339f42696e3afe688a61f4b7",
+    "task_id": "task_101_12_csv_pipeline_merge",
+    "url": "https://github.com/HKU-MMLab/UniClawBench/blob/a8ac4df6c554178c339f42696e3afe688a61f4b7/tasks/task_101_12_csv_pipeline_merge"
+  },
+  "summary": "Merge fifteen schema-divergent commerce exports while separating real customer conflicts from formatting-only differences.",
+  "task_id": "jbv1_customer_migration",
+  "title": "Customer-data migration with disputed records"
+}

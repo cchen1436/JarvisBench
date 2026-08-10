@@ -1,0 +1,15 @@
+{
+  "name": "jarvisbench-mas-supervisor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "test": "node --test ../../../tests/typescript/*.test.ts"
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

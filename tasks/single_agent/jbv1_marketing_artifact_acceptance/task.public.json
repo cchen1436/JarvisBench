@@ -1,0 +1,50 @@
+{
+  "assets": {
+    "public": [
+      "public/output_contract.json",
+      "public/result_schema.json",
+      "public/sources/helio_campaign/acceptance.md",
+      "public/sources/helio_campaign/brief.md"
+    ]
+  },
+  "baseline": {
+    "model": "nvidia/azure/anthropic/claude-opus-4-8",
+    "on_question": "continue_with_best_reversible_judgment",
+    "user_availability": "unavailable_after_brief"
+  },
+  "domain": "marketing",
+  "episode": {
+    "brief": "Build the HelioGrid launch concept review from sources/helio_campaign. Create three genuinely different responsive HTML directions: ROI proof, operator calm, and climate momentum. Keep every claim within the proof packet, compare their audience trade-offs, recommend one, and finish the selected master under results/final_campaign. Save all previews, concept_matrix.csv, review.md, and final.json.",
+    "result_paths": [
+      "results/final.json",
+      "results/concept_matrix.csv",
+      "results/review.md",
+      "results/concepts/roi_proof.html",
+      "results/concepts/operator_calm.html",
+      "results/concepts/climate_momentum.html",
+      "results/final_campaign/index.html"
+    ]
+  },
+  "runtime": {
+    "cpus": 8,
+    "family": "openclaw_workspace_v1",
+    "memory_gb": 16,
+    "modalities": [
+      "text",
+      "image"
+    ],
+    "worker_timeout_seconds": 1200
+  },
+  "schema_version": "1.0",
+  "source": {
+    "adaptation": "Preserves multi-direction campaign creation and image-aware review, without giving the worker a metric that mechanically selects the winner.",
+    "benchmark": "AgentIF-OneDay",
+    "license": "metadata reference; JarvisBench fixture is original",
+    "revision": "d7d282fc1577",
+    "task_id": "taskif_68",
+    "url": "https://github.com/xbench-ai/AgentIF-OneDay/blob/d7d282fc1577/agentif_oneday_data/data.jsonl"
+  },
+  "summary": "Create three equally supportable launch concepts, then carry the marketing lead's visual acceptance into the finished campaign.",
+  "task_id": "jbv1_marketing_artifact_acceptance",
+  "title": "Marketing concept production and visual acceptance"
+}

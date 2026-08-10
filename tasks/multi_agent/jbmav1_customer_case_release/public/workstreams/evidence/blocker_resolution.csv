@@ -1,0 +1,13 @@
+period,blocker_id,resolution_hours
+before,B1,12
+before,B2,15
+before,B3,18
+before,B4,20
+before,B5,23
+before,B6,28
+after,A1,7
+after,A2,9
+after,A3,11
+after,A4,13
+after,A5,14
+after,A6,18

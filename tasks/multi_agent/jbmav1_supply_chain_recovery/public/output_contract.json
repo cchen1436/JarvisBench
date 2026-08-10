@@ -1,0 +1,15 @@
+{
+  "required": {
+    "results/demand/customer_impact.csv": {"columns": ["customer", "order_id", "units_due", "due_date", "visible_penalty_per_unit_day", "projected_breach_days", "priority_score"], "minimum_rows": 3},
+    "results/demand/impact_memo.md": "Evidence-bounded customer consequence analysis",
+    "results/supply/lot_disposition.csv": {"columns": ["lot_id", "units", "qc_state", "earliest_release", "usable_for_plan", "evidence"], "minimum_rows": 3},
+    "results/supply/supplier_risk.md": "Supplier timeline and confidence analysis",
+    "results/supply/quality_gate.md": "Explicit release and hold boundaries",
+    "results/logistics/optimize_recovery.py": "Deterministic recovery-option model",
+    "results/logistics/option_matrix.csv": {"columns": ["option", "units_air", "units_ground", "arrival_date", "incremental_cost", "qc_assumption", "customer_effect"], "minimum_rows": 3},
+    "results/logistics/test_report.md": "Recovery model test evidence",
+    "results/recovery_brief.md": "Integrated owner-ready recovery brief",
+    "results/customer_notifications.csv": {"columns": ["customer", "planned_units", "planned_date", "notice_state", "message_basis"], "minimum_rows": 3},
+    "results/recovery_plan.json": "Project-level allocation and authorization record. Each allocation row must include units_committed_now: units assigned under documented owner authority, not merely order demand or a reversible scenario. Use 0 while authority is unresolved."
+  }
+}

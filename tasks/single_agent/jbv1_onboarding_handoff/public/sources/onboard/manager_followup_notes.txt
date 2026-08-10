@@ -1,0 +1,43 @@
+Manager follow-up notes for Alex Morgan onboarding (jotted on the way to standup)
+
+Heads up before HR/IT runs the bundle — I am writing this in a hurry so
+forgive the rambling.
+
+Quick context: Alex is starting on 2025-04-21 and will be working remote
+for the first week, then on-site after that. The IT instructions seem to
+assume in-person pickup on day one, which obviously does not work for the
+remote week, so somebody needs to reconcile that with the welcome packet
+and decide who actually puts the laptop in Alex's hands.
+
+I am also a little nervous about the bundle being complete. When I
+skimmed it I had this nagging feeling that some of the paperwork the HR
+policy and benefits docs talk about is just not in the folder — and I do
+not want to find that out the morning of the start date. I would rather
+the tracker show empty rows for stuff that is referenced but not
+actually delivered than quietly drop those entries; that way I can chase
+HR for the missing files before Monday.
+
+Speaking of paperwork — for the bank/direct-deposit set in particular I
+think we ended up with both a blank template and a signed counterpart in
+the packet. Payroll is going to want to see the signed version on its
+own line so they can verify the account details before they sign off,
+and the blank template is useful as a reference for the form librarian.
+Please do not let the tracker collapse those into one row; treat each
+physical file as its own thing.
+
+The bigger thing on my mind is the sequencing for the IT setup. The
+checklist reads like a flat list, but I know from past hires there are
+hidden prerequisites in there — the script bootstrap step in particular
+has bitten us before because it depends on access being provisioned
+upstream. I would feel much better if your handoff explicitly walks me
+through what blocks what, in actual order.
+
+Last thing — there are a handful of places where the welcome guide and
+the policy / benefits side seem to be telling slightly different stories
+(I noticed something with the legal entity name, the desk location, and
+one of the training links). Rather than picking a side and moving on,
+just call out the disagreements and tell me which file each version came
+from, so I can take the exact filenames back to HR and have them resolve
+upstream. Papering over it would just push the problem to Monday.
+
+Thanks. Ping me if anything else looks off.

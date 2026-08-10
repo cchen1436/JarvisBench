@@ -1,0 +1,19 @@
+{
+  "workstreams": [
+    {
+      "id": "literature",
+      "label": "Fixed-packet literature synthesis",
+      "brief": "Work only on the literature stream. Inspect /workspace/workstreams/literature/research_agenda, verify the five paper records, and develop exactly three distinct one-week directions. Write /workspace/results/literature/evidence_map.csv, /workspace/results/literature/agenda.csv, and /workspace/results/literature/agenda_memo.md. Compare prior art, novelty, falsifiability, and risks without choosing the PI's final direction."
+    },
+    {
+      "id": "resources",
+      "label": "Experiment capacity and scheduling",
+      "brief": "Work only on the resources stream. Inspect /workspace/workstreams/resources, complete the deterministic capacity planner, run its tests, and write /workspace/results/resources/plan_capacity.py, /workspace/results/resources/feasibility.csv, and /workspace/results/resources/execution_notes.md. Scope all three directions honestly; do not choose the PI's scientific contribution."
+    },
+    {
+      "id": "validity",
+      "label": "Methodological validity and reproducibility",
+      "brief": "Work only on the validity stream. Inspect /workspace/workstreams/validity, independently audit all three candidate directions for leakage, confounds, sample adequacy, stopping rules, and reproducibility. Write /workspace/results/validity/design_audit.csv, /workspace/results/validity/reproducibility_plan.md, and /workspace/results/validity/stopping_rules.md. State what evidence would falsify each direction; do not choose the PI's scientific contribution."
+    }
+  ]
+}

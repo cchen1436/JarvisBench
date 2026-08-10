@@ -1,0 +1,5 @@
+# The minimal digest-pinned Ubuntu base has no CA bundle. This exception is
+# scoped to the first signed InRelease fetch and is deleted immediately after
+# ca-certificates is installed. Ubuntu archive signatures remain mandatory.
+Acquire::https::Verify-Peer "false";
+Acquire::https::Verify-Host "false";

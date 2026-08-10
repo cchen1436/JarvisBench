@@ -1,0 +1,14 @@
+{
+  "workstreams": [
+    {
+      "id": "audit",
+      "label": "Connected evidence audit",
+      "brief": "Work only on connected-record reconciliation using jb collections, list, search, and get. Identify the latest filed return, reconcile the matching full calendar year of card transactions and email acknowledgments, exclude false matches, and quantify any exact gap. Write /workspace/results/audit/donation_reconciliation.csv, audit_memo.md, and final.json. Do not assume evidence outside the connected applications."
+    },
+    {
+      "id": "filing",
+      "label": "Filing scenarios and accountant follow-up",
+      "brief": "Work only on /workspace/workstreams/filing. Prepare concrete filing scenarios for a fully supported deduction, a documentation hold, and an unsupported amount, including required records, risks, and reversible next steps. Write /workspace/results/filing/scenario_matrix.csv, filing_checklist.md, and accountant_draft.md. This worker must not send, file, or guess the amount of any evidence gap; leave placeholders for parent integration."
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "final_record_schema": "result_schema.json",
+  "notes": [
+    "These are artifact-shape requirements, not target answers.",
+    "Use evidence from the supplied task materials and record assumptions.",
+    "Keep consequential actions reversible when requester intent is unknown."
+  ],
+  "required_files": [
+    "results/final.json",
+    "results/medication_list.csv",
+    "results/safety_note.md"
+  ],
+  "schema_version": "1.0",
+  "structured_artifacts": [
+    {
+      "format": "csv",
+      "minimum_rows": 6,
+      "path": "results/medication_list.csv",
+      "required_columns": [
+        "medication",
+        "indication",
+        "documented_dose",
+        "status",
+        "source",
+        "follow_up"
+      ]
+    }
+  ]
+}

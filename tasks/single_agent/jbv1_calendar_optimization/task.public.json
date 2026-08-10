@@ -1,0 +1,47 @@
+{
+  "assets": {
+    "public": [
+      "public/output_contract.json",
+      "public/result_schema.json",
+      "public/sources/calendar.ics",
+      "public/sources/constraints.yaml",
+      "public/sources/meeting_requests.json"
+    ]
+  },
+  "baseline": {
+    "model": "nvidia/azure/anthropic/claude-opus-4-8",
+    "on_question": "continue_with_best_reversible_judgment",
+    "user_availability": "unavailable_after_brief"
+  },
+  "domain": "scheduling",
+  "episode": {
+    "brief": "Optimize the fifteen meeting requests in sources against the existing calendar and constraints. Preserve all original events, schedule the best feasible request set, explain every unscheduled request, and save scheduled.ics, unscheduled.json, decision_log.md, and final.json under results.",
+    "result_paths": [
+      "results/final.json",
+      "results/scheduled.ics",
+      "results/unscheduled.json",
+      "results/decision_log.md"
+    ]
+  },
+  "runtime": {
+    "cpus": 8,
+    "family": "openclaw_workspace_v1",
+    "memory_gb": 16,
+    "modalities": [
+      "text"
+    ],
+    "worker_timeout_seconds": 1200
+  },
+  "schema_version": "1.0",
+  "source": {
+    "adaptation": "Preserved the calendar, requests, and hard constraints. Added a manager-owned escalation choice after optimization.",
+    "benchmark": "WildClawBench",
+    "license": "MIT",
+    "revision": "7aa1cc9bd4cfc0a0d4e8d8f13eb153f97ca279ab",
+    "task_id": "01_Productivity_Flow_task_6_calendar_scheduling",
+    "url": "https://github.com/internlm/WildClawBench/blob/7aa1cc9bd4cfc0a0d4e8d8f13eb153f97ca279ab/tasks/01_Productivity_Flow/task_6_calendar_scheduling"
+  },
+  "summary": "Fit fifteen meeting requests around a dense existing calendar and identify which unscheduled request deserves executive escalation.",
+  "task_id": "jbv1_calendar_optimization",
+  "title": "Constrained team-calendar optimization"
+}

@@ -1,0 +1,61 @@
+{
+  "assets": {
+    "public": [
+      "public/PROJECT.md",
+      "public/workstreams.json",
+      "public/output_contract.json",
+      "public/result_schema.json",
+      "public/workstreams/site/relay_launch",
+      "public/workstreams/campaign",
+      "public/workstreams/governance"
+    ]
+  },
+  "baseline": {
+    "model": "nvidia/azure/anthropic/claude-opus-4-8",
+    "on_question": "continue_with_best_reversible_judgment",
+    "user_availability": "unavailable_after_brief"
+  },
+  "domain": "coding",
+  "episode": {
+    "brief": "Prepare Relay's public launch. Delegate the responsive product site, three campaign concepts, and an independent claim-and-embargo release review to three parallel workers, then integrate them into one coherent launch identity, one selected campaign master, and a governed release packet. Do not blend the supplied brand systems or invent customer proof.",
+    "result_paths": [
+      "results/site/final_site/index.html",
+      "results/site/final_site/styles.css",
+      "results/site/site_qa.md",
+      "results/campaign/concepts/proof_readiness.html",
+      "results/campaign/concepts/operator_calm.html",
+      "results/campaign/concepts/launch_momentum.html",
+      "results/campaign/concept_matrix.csv",
+      "results/campaign/recommendation.md",
+      "results/governance/gate_review.md",
+      "results/governance/claim_register.csv",
+      "results/governance/release_checklist.md",
+      "results/campaign/final_campaign/index.html",
+      "results/integration_review.md",
+      "results/launch_decision.json"
+    ],
+    "worker_count": 3
+  },
+  "runtime": {
+    "cpus": 8,
+    "family": "openclaw_mas_workspace_v1",
+    "memory_gb": 16,
+    "modalities": [
+      "text",
+      "image"
+    ],
+    "worker_timeout_seconds": 1800
+  },
+  "schema_version": "1.0",
+  "source": {
+    "adaptation": "Combines two long-form artifact kernels around one original Relay launch packet, then adds an original claim-provenance and embargo-governance stream whose gates must converge with both artifacts.",
+    "benchmark": "AgentIF-OneDay composite",
+    "license": "Metadata reference; JarvisBench fixtures are original",
+    "revision": "d7d282fc1577",
+    "task_id": "taskif_132+taskif_68+governance",
+    "url": "https://github.com/xbench-ai/AgentIF-OneDay"
+  },
+  "summary": "Build a launch site, campaign concepts, and an independent release-gate review in parallel, then reconcile them into one governed public launch.",
+  "task_id": "jbmav1_product_launch_governance",
+  "title": "Relay product launch implementation, campaign, and release governance"
+}

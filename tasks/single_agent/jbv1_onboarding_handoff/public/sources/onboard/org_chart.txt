@@ -1,0 +1,10 @@
+BrightWater Engineering Org — Q2 2025
+
+CEO: Dana Reeves
+  VP Engineering: Sam Patel
+    Platform Team Lead: Priya Shah
+    Backend Team Lead: Marcus Chen
+    Frontend Team Lead: Leila Okafor
+    SRE Team Lead: Jordan Kim
+  VP Product: R. Nguyen
+  VP People: E. Baker

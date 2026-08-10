@@ -1,0 +1,44 @@
+model_name: fixed_sp500_historical_simulation_var
+raw_data_file: SP500.csv
+public_source_url: https://fred.stlouisfed.org/series/SP500
+series_column: SP500
+date_column: observation_date
+missing_value_rule: drop rows where SP500 is blank or "."
+return_rule:
+  daily_return_t: SP500_t / SP500_t_minus_1 - 1
+  daily_loss_t: -daily_return_t
+var_model:
+  horizon: 1 trading day
+  confidence_level: 99%
+  method: historical_simulation
+  lookback_trading_days: 250
+  weighting: equal_weighted
+  quantile_rule: nearest-rank 99th percentile of the previous 250 daily losses, using ceil(0.99 * 250) as the rank
+backtest_window:
+  start_date: 2020-02-25
+  end_date: 2021-02-19
+  include_start_and_end: true
+exception_rule: exception occurs when actual daily_loss_t is strictly greater than VaR_t
+traffic_light_rule:
+  observations: 250
+  green: 0-4 exceptions
+  amber_or_yellow: 5-9 exceptions
+  red: 10 or more exceptions
+volatility_regime_rule:
+  daily_volatility_inputs: daily_return_t
+  annualization_factor: 252
+  volatility_rising_flag: previous 20-trading-day annualized volatility is greater than previous 60-trading-day annualized volatility
+clustering_rule:
+  rolling_window_trading_days: 10
+coverage_test:
+  test: Kupiec unconditional coverage
+  expected_exception_probability: 0.01
+metrics_to_compute:
+  - number of backtest observations
+  - number of exceptions
+  - exception dates
+  - Basel traffic-light zone
+  - Kupiec LR statistic and p-value
+  - count of exceptions with volatility_rising_flag true
+  - maximum number of exceptions inside any rolling 10-trading-day window
+  - whether the model should support continue use, conditional use, or escalation

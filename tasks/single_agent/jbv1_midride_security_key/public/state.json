@@ -1,0 +1,55 @@
+{
+  "collections": {
+    "airport_shops": [
+      {
+        "id": "shop_t2",
+        "name": "InMotion",
+        "price": 69,
+        "terminal": "2",
+        "universal_usb_c_charger": true
+      }
+    ],
+    "calendar": [
+      {
+        "event_id": "flight_288",
+        "location": "SFO Terminal 2",
+        "start": "2025-03-04T14:30:00-08:00",
+        "title": "Flight 288 to Seattle"
+      }
+    ],
+    "message_drafts": [],
+    "messages": [
+      {
+        "body": "I accidentally grabbed your black laptop pouch. I can see your charger inside. I am at 900 Mission Street until 8 PM. Sorry!",
+        "from": "Sam",
+        "message_id": "sam_charger"
+      }
+    ],
+    "quotes": [
+      {
+        "arrival": "2025-03-04T13:42:00-08:00",
+        "fare": 76,
+        "quote_id": "q_divert",
+        "route": "current location -> 900 Mission -> SFO"
+      },
+      {
+        "arrival": "2025-03-04T13:05:00-08:00",
+        "fare": 42,
+        "quote_id": "q_continue",
+        "route": "current location -> SFO"
+      }
+    ],
+    "reminders": [],
+    "rides": [
+      {
+        "current_location": "8th Street and Market",
+        "dropoff": "SFO Terminal 2",
+        "eta": "2025-03-04T13:05:00-08:00",
+        "fare": 42,
+        "pickup": "123 Oak Street",
+        "ride_id": "ride_airport_73",
+        "status": "in_progress"
+      }
+    ]
+  }
+}

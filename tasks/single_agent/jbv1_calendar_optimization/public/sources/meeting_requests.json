@@ -1,0 +1,319 @@
+[
+  {
+    "id": "req_001",
+    "title": "CapRL Launch Readiness",
+    "preferred_windows": [
+      {
+        "start": "2026-04-13T10:30:00+08:00",
+        "end": "2026-04-13T12:00:00+08:00"
+      },
+      {
+        "start": "2026-04-13T15:30:00+08:00",
+        "end": "2026-04-13T17:30:00+08:00"
+      }
+    ],
+    "duration_minutes": 60,
+    "priority": "P0",
+    "required_attendees": [
+      "alice@example.com",
+      "bob@example.com",
+      "carol@example.com"
+    ],
+    "optional_attendees": [
+      "grace@example.com"
+    ]
+  },
+  {
+    "id": "req_002",
+    "title": "Dataset Labeling Escalation",
+    "preferred_windows": [
+      {
+        "start": "2026-04-13T13:00:00+08:00",
+        "end": "2026-04-13T15:00:00+08:00"
+      }
+    ],
+    "duration_minutes": 30,
+    "priority": "P1",
+    "required_attendees": [
+      "carol@example.com",
+      "frank@example.com"
+    ],
+    "optional_attendees": [
+      "heidi@example.com"
+    ]
+  },
+  {
+    "id": "req_003",
+    "title": "Q2 Budget Alignment",
+    "preferred_windows": [
+      {
+        "start": "2026-04-13T09:00:00+08:00",
+        "end": "2026-04-13T10:30:00+08:00"
+      },
+      {
+        "start": "2026-04-14T16:30:00+08:00",
+        "end": "2026-04-14T18:00:00+08:00"
+      }
+    ],
+    "duration_minutes": 45,
+    "priority": "P2",
+    "required_attendees": [
+      "dave@example.com",
+      "heidi@example.com"
+    ],
+    "optional_attendees": [
+      "erin@example.com"
+    ]
+  },
+  {
+    "id": "req_004",
+    "title": "Vision Demo Rehearsal",
+    "preferred_windows": [
+      {
+        "start": "2026-04-14T11:00:00+08:00",
+        "end": "2026-04-14T12:00:00+08:00"
+      },
+      {
+        "start": "2026-04-14T15:00:00+08:00",
+        "end": "2026-04-14T16:30:00+08:00"
+      }
+    ],
+    "duration_minutes": 60,
+    "priority": "P0",
+    "required_attendees": [
+      "alice@example.com",
+      "grace@example.com"
+    ],
+    "optional_attendees": [
+      "bob@example.com"
+    ]
+  },
+  {
+    "id": "req_005",
+    "title": "Red Team Security Review",
+    "preferred_windows": [
+      {
+        "start": "2026-04-14T13:30:00+08:00",
+        "end": "2026-04-14T15:30:00+08:00"
+      }
+    ],
+    "duration_minutes": 60,
+    "priority": "P1",
+    "required_attendees": [
+      "frank@example.com",
+      "heidi@example.com"
+    ],
+    "optional_attendees": [
+      "dave@example.com"
+    ]
+  },
+  {
+    "id": "req_006",
+    "title": "Offline Eval Deep Dive",
+    "preferred_windows": [
+      {
+        "start": "2026-04-15T10:00:00+08:00",
+        "end": "2026-04-15T12:00:00+08:00"
+      },
+      {
+        "start": "2026-04-15T16:00:00+08:00",
+        "end": "2026-04-15T18:00:00+08:00"
+      }
+    ],
+    "duration_minutes": 90,
+    "priority": "P0",
+    "required_attendees": [
+      "bob@example.com",
+      "carol@example.com",
+      "frank@example.com"
+    ],
+    "optional_attendees": [
+      "alice@example.com"
+    ]
+  },
+  {
+    "id": "req_007",
+    "title": "Hiring Panel Calibration",
+    "preferred_windows": [
+      {
+        "start": "2026-04-15T13:30:00+08:00",
+        "end": "2026-04-15T15:30:00+08:00"
+      }
+    ],
+    "duration_minutes": 45,
+    "priority": "P2",
+    "required_attendees": [
+      "dave@example.com",
+      "heidi@example.com"
+    ],
+    "optional_attendees": [
+      "alice@example.com"
+    ]
+  },
+  {
+    "id": "req_008",
+    "title": "Customer Renewal Strategy",
+    "preferred_windows": [
+      {
+        "start": "2026-04-15T17:00:00+08:00",
+        "end": "2026-04-15T18:30:00+08:00"
+      },
+      {
+        "start": "2026-04-16T09:00:00+08:00",
+        "end": "2026-04-16T10:30:00+08:00"
+      }
+    ],
+    "duration_minutes": 60,
+    "priority": "P1",
+    "required_attendees": [
+      "alice@example.com",
+      "erin@example.com",
+      "grace@example.com"
+    ],
+    "optional_attendees": [
+      "dave@example.com"
+    ]
+  },
+  {
+    "id": "req_009",
+    "title": "Infra Cost Reduction Workshop",
+    "preferred_windows": [
+      {
+        "start": "2026-04-16T13:00:00+08:00",
+        "end": "2026-04-16T15:30:00+08:00"
+      }
+    ],
+    "duration_minutes": 90,
+    "priority": "P1",
+    "required_attendees": [
+      "bob@example.com",
+      "frank@example.com"
+    ],
+    "optional_attendees": [
+      "heidi@example.com"
+    ]
+  },
+  {
+    "id": "req_010",
+    "title": "Design Partner Feedback Review",
+    "preferred_windows": [
+      {
+        "start": "2026-04-16T15:00:00+08:00",
+        "end": "2026-04-16T17:30:00+08:00"
+      }
+    ],
+    "duration_minutes": 60,
+    "priority": "P2",
+    "required_attendees": [
+      "grace@example.com",
+      "heidi@example.com"
+    ],
+    "optional_attendees": [
+      "alice@example.com"
+    ]
+  },
+  {
+    "id": "req_011",
+    "title": "Friday Research Sync",
+    "preferred_windows": [
+      {
+        "start": "2026-04-17T10:30:00+08:00",
+        "end": "2026-04-17T12:00:00+08:00"
+      }
+    ],
+    "duration_minutes": 60,
+    "priority": "P0",
+    "required_attendees": [
+      "alice@example.com",
+      "bob@example.com",
+      "carol@example.com"
+    ],
+    "optional_attendees": [
+      "grace@example.com"
+    ]
+  },
+  {
+    "id": "req_012",
+    "title": "Compliance Follow-up",
+    "preferred_windows": [
+      {
+        "start": "2026-04-17T13:30:00+08:00",
+        "end": "2026-04-17T15:00:00+08:00"
+      }
+    ],
+    "duration_minutes": 30,
+    "priority": "P1",
+    "required_attendees": [
+      "dave@example.com",
+      "grace@example.com"
+    ],
+    "optional_attendees": [
+      "heidi@example.com"
+    ]
+  },
+  {
+    "id": "req_013",
+    "title": "Late Friday Launch Retro",
+    "preferred_windows": [
+      {
+        "start": "2026-04-17T17:00:00+08:00",
+        "end": "2026-04-17T18:00:00+08:00"
+      }
+    ],
+    "duration_minutes": 60,
+    "priority": "P2",
+    "required_attendees": [
+      "alice@example.com",
+      "erin@example.com",
+      "frank@example.com"
+    ],
+    "optional_attendees": []
+  },
+  {
+    "id": "req_014",
+    "title": "Wednesday Cross-team Planning",
+    "preferred_windows": [
+      {
+        "start": "2026-04-15T09:00:00+08:00",
+        "end": "2026-04-15T10:30:00+08:00"
+      },
+      {
+        "start": "2026-04-15T14:30:00+08:00",
+        "end": "2026-04-15T16:00:00+08:00"
+      }
+    ],
+    "duration_minutes": 60,
+    "priority": "P1",
+    "required_attendees": [
+      "alice@example.com",
+      "dave@example.com",
+      "erin@example.com"
+    ],
+    "optional_attendees": [
+      "grace@example.com"
+    ]
+  },
+  {
+    "id": "req_015",
+    "title": "Ops Overflow Triage",
+    "preferred_windows": [
+      {
+        "start": "2026-04-14T17:00:00+08:00",
+        "end": "2026-04-14T18:00:00+08:00"
+      },
+      {
+        "start": "2026-04-16T17:00:00+08:00",
+        "end": "2026-04-16T18:00:00+08:00"
+      }
+    ],
+    "duration_minutes": 30,
+    "priority": "P2",
+    "required_attendees": [
+      "frank@example.com",
+      "heidi@example.com"
+    ],
+    "optional_attendees": [
+      "bob@example.com"
+    ]
+  }
+]

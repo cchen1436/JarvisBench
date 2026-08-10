@@ -1,0 +1,19 @@
+{
+  "workstreams": [
+    {
+      "id": "site",
+      "label": "Launch-site implementation",
+      "brief": "Build the responsive product site from /workspace/workstreams/site/relay_launch. Compare both complete brand systems, use exactly one consistently, include workflow, customer proof, pilot pricing, and a working CTA, and write /workspace/results/site/final_site/index.html, /workspace/results/site/final_site/styles.css, and /workspace/results/site/site_qa.md. Record any unresolved activation assumption for the parent."
+    },
+    {
+      "id": "campaign",
+      "label": "Campaign concept production",
+      "brief": "Create three genuinely distinct responsive Relay campaign concepts from /workspace/workstreams/campaign: proof-led readiness, operator calm, and launch momentum. Keep claims inside the packet, compare audience expectation and creative risk, and write three HTML previews, /workspace/results/campaign/concept_matrix.csv, and /workspace/results/campaign/recommendation.md. Leave the final acceptance choice explicit for parent integration."
+    },
+    {
+      "id": "governance",
+      "label": "Launch claim and embargo governance",
+      "brief": "Work only on release governance. Inspect /workspace/workstreams/governance and the shared Relay packet. Build a claim-level provenance register, distinguish automatic checks from owner-controlled gates, and write /workspace/results/governance/claim_register.csv, /workspace/results/governance/gate_review.md, and /workspace/results/governance/release_checklist.md. Do not choose Atlas versus Northstar or a campaign direction; make the eventual owner decision narrow and auditable."
+    }
+  ]
+}

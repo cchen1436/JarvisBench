@@ -1,0 +1,19 @@
+{
+  "workstreams": [
+    {
+      "id": "engineering",
+      "label": "Caption mux repair",
+      "brief": "Work only on the initial caption defect under /workspace/workstreams/engineering/caption_field. Reproduce the four supplied tests, repair cumulative-prefix duplication and reconnect sequence resets without adding a long buffer, and write /workspace/results/engineering/caption_field/stream_mux.py, test_stream_mux.py, and test_report.md. Preserve already-stable words. Do not invent a policy for correction behavior absent from the initial packet; state any unresolved boundary for parent integration."
+    },
+    {
+      "id": "field",
+      "label": "Field behavior and rollout analysis",
+      "brief": "Work only on the fixed field packet under /workspace/workstreams/field. Analyze every transition in field_sessions.csv against ROLLOUT_POLICY.md, quantify prefix extensions, exact replays, reconnects, and non-prefix corrections by cohort, and write /workspace/results/field/field_analysis.csv, rollout_options.md, and recommendation.md. Identify what can be established from traces and what still depends on the owner's first rollout cohort. Do not edit the caption implementation."
+    },
+    {
+      "id": "operations",
+      "label": "Release observability and rollback",
+      "brief": "Work only on release operations under /workspace/workstreams/operations. Evaluate both cohorts against the fixed deployment baseline and telemetry sample, then write /workspace/results/operations/readiness_matrix.csv, monitoring_plan.md, and rollback_drill.md. Specify measurable gates, cohort isolation, rollback triggers, and evidence gaps. Do not select the first cohort and do not edit the caption implementation."
+    }
+  ]
+}

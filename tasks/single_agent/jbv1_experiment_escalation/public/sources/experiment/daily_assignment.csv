@@ -1,0 +1,15 @@
+day,variant,sessions,orders
+2026-07-14,control,492,51
+2026-07-14,candidate,503,59
+2026-07-15,control,501,54
+2026-07-15,candidate,497,61
+2026-07-16,control,507,53
+2026-07-16,candidate,498,60
+2026-07-17,control,500,49
+2026-07-17,candidate,502,62
+2026-07-18,control,499,50
+2026-07-18,candidate,500,59
+2026-07-19,control,501,52
+2026-07-19,candidate,499,61
+2026-07-20,control,500,51
+2026-07-20,candidate,501,63

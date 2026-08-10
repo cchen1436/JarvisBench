@@ -1,0 +1,56 @@
+{
+  "assets": {
+    "public": [
+      "public/PROJECT.md",
+      "public/workstreams.json",
+      "public/output_contract.json",
+      "public/result_schema.json",
+      "public/workstreams/postmortems",
+      "public/workstreams/control_lab",
+      "public/workstreams/delivery"
+    ]
+  },
+  "baseline": {
+    "model": "nvidia/azure/anthropic/claude-opus-4-8",
+    "on_question": "continue_with_best_reversible_judgment",
+    "user_availability": "unavailable_after_brief"
+  },
+  "domain": "workplace",
+  "episode": {
+    "brief": "Prepare the next quarterly incident-remediation program. Delegate cross-incident synthesis, technical control feasibility, and organizational delivery/exercise planning to three parallel workers, then integrate their evidence into one owner-ready plan with exactly one first funded initiative. Preserve unresolved budget authority and do not invent an organizational priority.",
+    "result_paths": [
+      "results/postmortems/insights.md",
+      "results/postmortems/action_register.csv",
+      "results/control_lab/evaluate_controls.py",
+      "results/control_lab/control_scores.csv",
+      "results/control_lab/test_report.md",
+      "results/delivery/execution_matrix.csv",
+      "results/delivery/quarter_sequence.md",
+      "results/delivery/exercise_protocol.md",
+      "results/quarter_plan.md",
+      "results/remediation_plan.json"
+    ],
+    "worker_count": 3
+  },
+  "runtime": {
+    "cpus": 8,
+    "family": "openclaw_mas_workspace_v1",
+    "memory_gb": 16,
+    "modalities": [
+      "text"
+    ],
+    "worker_timeout_seconds": 1800
+  },
+  "schema_version": "1.0",
+  "source": {
+    "adaptation": "Retains the six-postmortem corpus and adds reproducible control-feasibility and organizational-delivery streams, so the owner allocates budget after recurring-risk, implementation, and execution evidence exist.",
+    "benchmark": "UniClawBench plus JarvisBench composite",
+    "license": "MIT plus original JarvisBench fixture",
+    "revision": "a8ac4df6c554178c339f42696e3afe688a61f4b7",
+    "task_id": "task_168_17_postmortem_synthesis+control_lab+delivery_program",
+    "url": "https://github.com/HKU-MMLab/UniClawBench"
+  },
+  "summary": "Synthesize six production incidents, evaluate three technical controls, and map organizational delivery constraints in parallel, then allocate one scarce quarterly remediation slot.",
+  "task_id": "jbmav1_incident_response_program",
+  "title": "Cross-incident remediation and control program"
+}

@@ -1,0 +1,4 @@
+direction,known_design_pressure,minimum_audit_question
+corrective_retrieval,retriever and generator changes can be confounded,Can the retrieval intervention be isolated with a frozen generator and matched queries?
+citation_calibration,annotator labels can leak into threshold tuning,Are thresholds selected without touching the held-out evaluation slice?
+context_order,passage relevance and position can be confounded,Are identical retrieved passages counterbalanced across beginning middle and end?

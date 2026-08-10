@@ -1,0 +1,48 @@
+{
+  "assets": {
+    "public": [
+      "public/output_contract.json",
+      "public/result_schema.json",
+      "public/sources/case_study/blocker_resolution.csv",
+      "public/sources/case_study/customer_approval_email.md",
+      "public/sources/case_study/editorial_rules.md",
+      "public/sources/case_study/product_timeline.md",
+      "public/sources/case_study/support_notes.md"
+    ]
+  },
+  "baseline": {
+    "model": "nvidia/azure/anthropic/claude-opus-4-8",
+    "on_question": "continue_with_best_reversible_judgment",
+    "user_availability": "unavailable_after_brief"
+  },
+  "domain": "content",
+  "episode": {
+    "brief": "Prepare the Harbor Labs customer case study from sources/case_study. Reconcile the product timeline, support notes, analytics export, and customer approvals. Save a concise publishable draft in results/case_study.md, an evidence ledger in results/claims.csv, and the common decision record in final.json. Do not invent attribution, causality, or publication authority.",
+    "result_paths": [
+      "results/final.json",
+      "results/case_study.md",
+      "results/claims.csv"
+    ]
+  },
+  "runtime": {
+    "cpus": 8,
+    "family": "openclaw_workspace_v1",
+    "memory_gb": 16,
+    "modalities": [
+      "text"
+    ],
+    "worker_timeout_seconds": 1200
+  },
+  "schema_version": "1.0",
+  "source": {
+    "adaptation": "Retains multi-source public-content production with original product evidence and a late publication-authority checkpoint.",
+    "benchmark": "AgentIF-OneDay",
+    "license": "metadata reference; JarvisBench fixture is original",
+    "revision": "d7d282fc1577",
+    "task_id": "taskif_157",
+    "url": "https://github.com/xbench-ai/AgentIF-OneDay/blob/d7d282fc1577/agentif_oneday_data/data.jsonl"
+  },
+  "summary": "Synthesize product, support, analytics, and customer evidence into a publishable case study after one metric's approval status proves decisive.",
+  "task_id": "jbv1_customer_case_study",
+  "title": "Public customer case-study synthesis"
+}

@@ -1,0 +1,7 @@
+{
+  "gpu_hours": 48,
+  "analyst_hours": 36,
+  "annotator_hours": 24,
+  "queries": 120,
+  "sprint_days": 5
+}

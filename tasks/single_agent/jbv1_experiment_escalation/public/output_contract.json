@@ -1,0 +1,30 @@
+{
+  "final_record_schema": "result_schema.json",
+  "notes": [
+    "These are artifact-shape requirements, not target answers.",
+    "Use evidence from the supplied task materials and record assumptions.",
+    "Keep consequential actions reversible when requester intent is unknown."
+  ],
+  "required_files": [
+    "results/final.json",
+    "results/metrics.csv",
+    "results/analysis.py",
+    "results/decision_memo.md"
+  ],
+  "schema_version": "1.0",
+  "structured_artifacts": [
+    {
+      "format": "csv",
+      "minimum_rows": 4,
+      "path": "results/metrics.csv",
+      "required_columns": [
+        "segment",
+        "control_rate",
+        "candidate_rate",
+        "relative_change",
+        "revenue_change",
+        "recommendation"
+      ]
+    }
+  ]
+}

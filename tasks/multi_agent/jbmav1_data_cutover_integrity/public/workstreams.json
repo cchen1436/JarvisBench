@@ -1,0 +1,14 @@
+{
+  "workstreams": [
+    {
+      "id": "migration",
+      "label": "Customer-record reconciliation",
+      "brief": "Work only on data reconciliation. Inspect all CSVs under /workspace/workstreams/migration/sources, reconcile schemas, deduplicate orders, quantify the dataset, and surface genuine customer-record conflicts with lineage. Write /workspace/results/migration/master.csv, summary.md, conflicts.json, conflict_review.csv, and final.json. Do not invent source precedence or silently publish disputed values."
+    },
+    {
+      "id": "export",
+      "label": "Batch-export implementation",
+      "brief": "Work only on the export utility. Inspect /workspace/workstreams/export/customer_export, implement and test export_batch while preserving the single-record API, deterministic paths, retry safety, and auditable mixed-batch reporting. Write the completed package under /workspace/results/export/customer_export plus /workspace/results/export/test_report.md and final.json. Keep the unresolved product semantics explicit for parent integration."
+    }
+  ]
+}

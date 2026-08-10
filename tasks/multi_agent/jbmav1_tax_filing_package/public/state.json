@@ -1,0 +1,79 @@
+{
+  "collections": {
+    "email_drafts": [],
+    "emails": [
+      {
+        "body": "Thank you for your $175 contribution to The Scranton Mission on March 14, 2025. No goods or services were provided in exchange for this contribution. Keep this acknowledgment for your tax records.",
+        "email_id": "MAIL-DON-175",
+        "from": "receipts@scrantonmission.example",
+        "sent_at": "2025-03-14T18:20:00-04:00",
+        "subject": "2025 charitable contribution acknowledgment",
+        "to": "michael.scott@dundermifflin.example"
+      },
+      {
+        "body": "Your 2025 federal return was filed today. The Schedule A charitable contribution line is $950 based on the organizer total. Please retain the supporting acknowledgments in your records.",
+        "email_id": "MAIL-TAX-2025-RETURN",
+        "from": "marie.cole@martincole.example",
+        "sent_at": "2026-04-10T15:45:00-04:00",
+        "subject": "Your 2025 return has been filed",
+        "to": "michael.scott@dundermifflin.example"
+      }
+    ],
+    "notes": [],
+    "tax_returns": [
+      {
+        "filed_at": "2026-04-10T15:40:00-04:00",
+        "preparer": "Martin & Cole Tax Services",
+        "return_id": "SPEEDTAX-2025-FILED",
+        "schedule_a_charitable_deduction": 950,
+        "status": "filed",
+        "tax_year": 2025
+      },
+      {
+        "preparer": "Martin & Cole Tax Services",
+        "return_id": "SPEEDTAX-2024-FILED",
+        "schedule_a_charitable_deduction": 400,
+        "status": "filed",
+        "tax_year": 2024
+      }
+    ],
+    "transactions": [
+      {
+        "account": "Sapphire Preferred",
+        "amount": -225,
+        "category": "charitable donation",
+        "merchant": "Dunder Mifflin Annual Food Drive",
+        "posted_at": "2025-01-25",
+        "status": "posted",
+        "transaction_id": "GRIN-DON-2025-0125"
+      },
+      {
+        "account": "Sapphire Preferred",
+        "amount": -300,
+        "category": "charitable donation",
+        "merchant": "American Red Cross",
+        "posted_at": "2025-08-10",
+        "status": "posted",
+        "transaction_id": "GRIN-DON-2025-0810"
+      },
+      {
+        "account": "Sapphire Preferred",
+        "amount": -68,
+        "category": "shopping",
+        "merchant": "Scranton Mission Thrift Store",
+        "posted_at": "2025-03-18",
+        "status": "posted",
+        "transaction_id": "GRIN-2025-0318"
+      },
+      {
+        "account": "Sapphire Preferred",
+        "amount": -150,
+        "category": "charitable donation",
+        "merchant": "Toys for Tots",
+        "posted_at": "2024-12-17",
+        "status": "posted",
+        "transaction_id": "GRIN-DON-2024-1217"
+      }
+    ]
+  }
+}

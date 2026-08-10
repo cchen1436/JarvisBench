@@ -1,0 +1,18 @@
+{
+  "required": {
+    "results/engineering/caption_field/stream_mux.py": "Initial repaired caption mux",
+    "results/engineering/caption_field/test_stream_mux.py": "Initial regression tests",
+    "results/engineering/caption_field/test_report.md": "Initial repair test report",
+    "results/field/field_analysis.csv": "Classified fixed field transitions",
+    "results/field/rollout_options.md": "Concrete policy options and consequences",
+    "results/field/recommendation.md": "Evidence-bounded field recommendation",
+    "results/operations/readiness_matrix.csv": {"columns": ["cohort", "deployment_risk", "required_metric", "rollback_trigger", "isolation_control"], "minimum_rows": 2},
+    "results/operations/monitoring_plan.md": "Release metrics, gates, and cohort isolation",
+    "results/operations/rollback_drill.md": "Deterministic rollback procedure and validation",
+    "results/release/stream_mux.py": "Integrated release candidate",
+    "results/release/test_stream_mux.py": "Integrated regression suite",
+    "results/release/test_report.md": "Integrated test report",
+    "results/rollout_runbook.md": "Staged release and rollback procedure",
+    "results/rollout_decision.json": "Project-level release decision"
+  }
+}

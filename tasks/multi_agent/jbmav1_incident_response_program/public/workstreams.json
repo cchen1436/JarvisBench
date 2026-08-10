@@ -1,0 +1,19 @@
+{
+  "workstreams": [
+    {
+      "id": "postmortems",
+      "label": "Cross-incident root-cause synthesis",
+      "brief": "Work only on the postmortem stream. Review all six files under /workspace/workstreams/postmortems, identify recurring and one-off causes, and write /workspace/results/postmortems/insights.md plus /workspace/results/postmortems/action_register.csv with at least ten evidence-linked actions, owners, dependencies, and success signals. Do not choose the first funded initiative."
+    },
+    {
+      "id": "control_lab",
+      "label": "Remediation-control feasibility",
+      "brief": "Work only on the control-lab stream. Inspect /workspace/workstreams/control_lab, complete the reproducible candidate-control evaluator, run its tests, and write /workspace/results/control_lab/evaluate_controls.py, /workspace/results/control_lab/control_scores.csv, and /workspace/results/control_lab/test_report.md. Compare coverage, effort, auditability, and reversibility without inventing the service owner's quarterly priority."
+    },
+    {
+      "id": "delivery",
+      "label": "Organizational delivery and exercise planning",
+      "brief": "Work only on the delivery stream. Inspect /workspace/workstreams/delivery and map all three candidate initiatives to real team capacity, dependencies, change windows, exercise mechanics, and auditable success evidence. Write /workspace/results/delivery/execution_matrix.csv, quarter_sequence.md, and exercise_protocol.md. Make each viable path concrete without choosing which initiative receives the funded slot."
+    }
+  ]
+}

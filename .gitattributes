@@ -1,0 +1,6 @@
+# A few extracted source files intentionally retain a second terminal newline.
+* whitespace=-blank-at-eof
+
+# Frozen benchmark assets are checksum-bearing bytes. Do not let checkout
+# settings rewrite line endings; do not normalize their inherited whitespace.
+tasks/** -text whitespace=-blank-at-eof,-trailing-space

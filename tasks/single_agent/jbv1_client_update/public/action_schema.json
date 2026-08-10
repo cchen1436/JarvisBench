@@ -1,0 +1,28 @@
+{
+  "actions": {
+    "save_draft": {
+      "append_to": "drafts",
+      "id_field": "draft_id",
+      "required": [
+        "audience",
+        "body"
+      ],
+      "types": {
+        "audience": "string",
+        "body": "string"
+      }
+    },
+    "write_note": {
+      "append_to": "notes",
+      "id_field": "note_id",
+      "required": [
+        "title",
+        "body"
+      ],
+      "types": {
+        "body": "string",
+        "title": "string"
+      }
+    }
+  }
+}

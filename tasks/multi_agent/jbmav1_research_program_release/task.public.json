@@ -1,0 +1,57 @@
+{
+  "assets": {
+    "public": [
+      "public/PROJECT.md",
+      "public/workstreams.json",
+      "public/output_contract.json",
+      "public/result_schema.json",
+      "public/workstreams/literature/research_agenda",
+      "public/workstreams/resources",
+      "public/workstreams/validity"
+    ]
+  },
+  "baseline": {
+    "model": "nvidia/azure/anthropic/claude-opus-4-8",
+    "on_question": "continue_with_best_reversible_judgment",
+    "user_availability": "unavailable_after_brief"
+  },
+  "domain": "research",
+  "episode": {
+    "brief": "Prepare next week's RAG research sprint. Delegate fixed-packet literature synthesis, execution-capacity planning, and an independent validity/reproducibility audit to three parallel workers, then integrate their evidence into exactly one falsifiable experiment plan. Preserve the PI's scientific ownership when several defensible contributions remain.",
+    "result_paths": [
+      "results/literature/evidence_map.csv",
+      "results/literature/agenda.csv",
+      "results/literature/agenda_memo.md",
+      "results/resources/plan_capacity.py",
+      "results/resources/feasibility.csv",
+      "results/resources/execution_notes.md",
+      "results/validity/design_audit.csv",
+      "results/validity/reproducibility_plan.md",
+      "results/validity/stopping_rules.md",
+      "results/experiment_plan.md",
+      "results/research_plan.json"
+    ],
+    "worker_count": 3
+  },
+  "runtime": {
+    "cpus": 8,
+    "family": "openclaw_mas_workspace_v1",
+    "memory_gb": 16,
+    "modalities": [
+      "text"
+    ],
+    "worker_timeout_seconds": 1800
+  },
+  "schema_version": "1.0",
+  "source": {
+    "adaptation": "Retains the fixed five-paper packet and adds deterministic capacity and methodological-validity streams, so PI attention follows converged novelty, feasibility, and reproducibility evidence rather than an abstract topic request.",
+    "benchmark": "Pi-Bench plus JarvisBench composite",
+    "license": "Research metadata plus original JarvisBench fixture",
+    "revision": "jarvisbench-mas-v1-20260803",
+    "task_id": "research_agenda_review+fixed_capacity_planning+validity_audit",
+    "url": "https://arxiv.org/abs/2605.14678"
+  },
+  "summary": "Develop three literature-grounded RAG directions, test their operational feasibility and methodological validity in parallel, then turn one PI-owned scientific choice into a reproducible sprint.",
+  "task_id": "jbmav1_research_program_release",
+  "title": "RAG research sprint selection and release review"
+}

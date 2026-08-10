@@ -1,0 +1,15 @@
+{
+  "required": {
+    "results/literature/evidence_map.csv": {"columns": ["paper_id", "claim", "relevance", "limitation"], "minimum_rows": 5},
+    "results/literature/agenda.csv": {"columns": ["direction", "scientific_question", "minimum_test", "main_risk"], "minimum_rows": 3},
+    "results/literature/agenda_memo.md": "Prior-art and scientific-tradeoff synthesis",
+    "results/resources/plan_capacity.py": "Reproducible capacity planner",
+    "results/resources/feasibility.csv": {"columns": ["direction", "gpu_hours", "analyst_hours", "annotator_hours", "queries", "feasible", "binding_constraint"], "minimum_rows": 3},
+    "results/resources/execution_notes.md": "Five-day execution constraints and schedule",
+    "results/validity/design_audit.csv": {"columns": ["direction", "primary_threat", "required_control", "stopping_rule", "reproducibility_risk"], "minimum_rows": 3},
+    "results/validity/reproducibility_plan.md": "Cross-direction reproducibility and leakage controls",
+    "results/validity/stopping_rules.md": "Precommitted stopping and falsification rules",
+    "results/experiment_plan.md": "Integrated selected experiment design",
+    "results/research_plan.json": "Project-level direction and integration record"
+  }
+}

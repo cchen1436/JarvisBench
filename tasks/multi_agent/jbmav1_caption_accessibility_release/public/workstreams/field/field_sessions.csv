@@ -1,0 +1,11 @@
+session_id,cohort,sequence,previous_visible,next_payload,final,expected_class
+stage_01,stage_display,1,,Release,false,prefix_extension
+stage_01,stage_display,2,Release,Release begins,false,prefix_extension
+stage_01,stage_display,2,Release begins,Release begins,false,exact_replay
+stage_02,stage_display,11,Ready for,Ready for launch,false,prefix_extension
+stage_02,stage_display,2,Ready for launch,Ready for launch now,true,reconnect_prefix
+headset_01,headset_beta,4,We shipped Tues,We shipped Tuesday,false,active_token_correction
+headset_02,headset_beta,8,The model requres,The model requires,false,active_token_correction
+headset_03,headset_beta,5,Review the da,Review the data,false,active_token_correction
+headset_04,headset_beta,6,Keep stable words,Replace earlier words,false,prior_word_rewrite
+

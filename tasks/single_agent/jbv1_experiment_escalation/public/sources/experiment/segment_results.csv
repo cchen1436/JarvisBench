@@ -1,0 +1,7 @@
+variant,segment,sessions,orders,revenue
+control,self_serve,2000,200,17800
+candidate,self_serve,2000,250,22100
+control,mid_market,1000,100,28500
+candidate,mid_market,1000,110,30300
+control,enterprise,500,60,50400
+candidate,enterprise,500,45,38250

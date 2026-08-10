@@ -1,0 +1,47 @@
+{
+  "assets": {
+    "public": [
+      "public/output_contract.json",
+      "public/result_schema.json",
+      "public/sources/experiment/README.md",
+      "public/sources/experiment/daily_assignment.csv",
+      "public/sources/experiment/segment_results.csv"
+    ]
+  },
+  "baseline": {
+    "model": "nvidia/azure/anthropic/claude-opus-4-8",
+    "on_question": "continue_with_best_reversible_judgment",
+    "user_availability": "unavailable_after_brief"
+  },
+  "domain": "analytics",
+  "episode": {
+    "brief": "Audit the checkout experiment in sources/experiment. Reproduce the overall and segment results, inspect stability and revenue rather than conversion alone, write a reusable analysis script, and recommend a rollout posture. Save metrics.csv, analysis.py, decision_memo.md, and final.json.",
+    "result_paths": [
+      "results/final.json",
+      "results/metrics.csv",
+      "results/analysis.py",
+      "results/decision_memo.md"
+    ]
+  },
+  "runtime": {
+    "cpus": 8,
+    "family": "openclaw_workspace_v1",
+    "memory_gb": 16,
+    "modalities": [
+      "text"
+    ],
+    "worker_timeout_seconds": 1200
+  },
+  "schema_version": "1.0",
+  "source": {
+    "adaptation": "Retains practical commerce ROI analysis and adds a deterministic segment reversal that becomes decision-relevant only after computation.",
+    "benchmark": "Claw-Eval",
+    "license": "metadata reference; JarvisBench fixture is original",
+    "revision": "d3f02d4938ab0832377d90535013def2b1a2fdc0",
+    "task_id": "C21zh_ecommerce_data_analysis",
+    "url": "https://github.com/claw-eval/claw-eval/blob/d3f02d4938ab0832377d90535013def2b1a2fdc0/tasks/C21zh_ecommerce_data_analysis/task.yaml"
+  },
+  "summary": "Reproduce a product experiment, expose an aggregate-versus-enterprise reversal, and escalate the resulting rollout decision.",
+  "task_id": "jbv1_experiment_escalation",
+  "title": "Segmented product experiment analysis"
+}

@@ -1,0 +1,30 @@
+{
+  "actions": {
+    "draft_email": {
+      "append_to": "email_drafts",
+      "id_field": "draft_id",
+      "required": [
+        "to",
+        "subject",
+        "body"
+      ],
+      "types": {
+        "body": "string",
+        "subject": "string",
+        "to": "string"
+      }
+    },
+    "write_note": {
+      "append_to": "notes",
+      "id_field": "note_id",
+      "required": [
+        "title",
+        "body"
+      ],
+      "types": {
+        "body": "string",
+        "title": "string"
+      }
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "workstreams": [
+    {
+      "id": "medications",
+      "label": "Medication evidence reconciliation",
+      "brief": "Work only on the medication stream. Reconcile every file under /workspace/workstreams/medications and write /workspace/results/medications/medication_list.csv plus /workspace/results/medications/safety_note.md. Include all six medicines, sources, discrepancies, and clinician follow-ups. Do not prescribe or silently decide which conflicting metoprolol dose the patient actually took."
+    },
+    {
+      "id": "handoff",
+      "label": "Follow-up visit communication",
+      "brief": "Work only on the handoff stream. Inspect /workspace/workstreams/handoff and prepare /workspace/results/handoff/visit_brief.md plus /workspace/results/handoff/call_script.md. Make the documents usable with a clearly marked current-metoprolol-dose field, symptoms, source conflicts, and focused clinician questions. Do not guess the patient's post-discharge behavior."
+    }
+  ]
+}

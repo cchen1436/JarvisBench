@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["status", "workers", "integration", "allocation", "decision"],
+  "properties": {
+    "status": {"enum": ["completed", "completed_with_assumption", "completed_with_owner_guidance"]},
+    "workers": {"type": "object", "required": ["demand", "supply", "logistics"]},
+    "integration": {
+      "type": "object",
+      "required": ["total_demand_units", "qc_cleared_now", "qc_cleared_inbound", "held_units", "option_count", "workstream_findings"],
+      "properties": {"workstream_findings": {"oneOf": [{"type": "array", "minItems": 3}, {"type": "object", "minProperties": 3}]}}
+    },
+    "allocation": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["customer", "units", "units_committed_now"],
+        "properties": {
+          "customer": {"type": "string"},
+          "units": {"type": "integer", "minimum": 0},
+          "units_committed_now": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "decision": {"type": "object", "required": ["choice", "options_considered", "question_for_requester", "assumption", "reversible_until"]}
+  }
+}

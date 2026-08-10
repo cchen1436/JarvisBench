@@ -1,0 +1,48 @@
+{
+  "assets": {
+    "public": [
+      "public/output_contract.json",
+      "public/result_schema.json",
+      "public/sources/caption_field/FIELD_REPORT.md",
+      "public/sources/caption_field/run_tests.sh",
+      "public/sources/caption_field/stream_mux.py",
+      "public/sources/caption_field/test_stream_mux.py"
+    ]
+  },
+  "baseline": {
+    "model": "nvidia/azure/anthropic/claude-opus-4-8",
+    "on_question": "continue_with_best_reversible_judgment",
+    "user_availability": "unavailable_after_brief"
+  },
+  "domain": "coding",
+  "episode": {
+    "brief": "Fix duplicate and missing captions in sources/caption_field. Reproduce the public tests, patch CaptionMux without adding a long buffer, keep already-stable words intact, and copy the patched module and tests to results/caption_field. Save a concise debug_report.md and final.json.",
+    "result_paths": [
+      "results/final.json",
+      "results/debug_report.md",
+      "results/caption_field/stream_mux.py",
+      "results/caption_field/test_stream_mux.py"
+    ]
+  },
+  "runtime": {
+    "cpus": 8,
+    "family": "openclaw_workspace_v1",
+    "memory_gb": 16,
+    "modalities": [
+      "text"
+    ],
+    "worker_timeout_seconds": 1200
+  },
+  "schema_version": "1.0",
+  "source": {
+    "adaptation": "Preserves iterative debugging with real user pivots: public tests cover reconnect replay, while a later headset retest adds one scoped behavior.",
+    "benchmark": "SWE-Together",
+    "license": "metadata reference; JarvisBench fixture is original",
+    "revision": "811a70a28ff2",
+    "task_id": "pi-mono-parallel-tool-stall",
+    "url": "https://github.com/Togetherbench/SWE-Together"
+  },
+  "summary": "Repair a reproducible reconnect bug, then incorporate a user-observed partial-correction regression that appears only after the first patch.",
+  "task_id": "jbv1_caption_field_retest",
+  "title": "Streaming-caption fix with field retest"
+}

@@ -1,0 +1,4 @@
+direction,gpu_hours,analyst_hours,annotator_hours,queries
+corrective_retrieval,42,30,4,100
+citation_calibration,18,32,24,80
+context_order,30,28,8,72

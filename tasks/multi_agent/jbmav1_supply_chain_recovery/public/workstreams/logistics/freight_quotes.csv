@@ -1,0 +1,5 @@
+option,eligible_units,transit_days,cost_per_unit,pickup_date,quality_condition
+standard_ground,900,5,2,2026-08-04,QC-cleared units only
+priority_ground,900,3,6,2026-08-04,QC-cleared units only
+partial_air,600,1,18,2026-08-04,LOT-771A certificate required
+full_air,900,1,20,2026-08-04,would require LOT-771B quality exception and is therefore invalid

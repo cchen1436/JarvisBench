@@ -1,0 +1,392 @@
+#!/usr/bin/env python3
+"""Small deterministic workspace/app interface used by JarvisBench v1.
+
+The command intentionally uses only the Python standard library. Tasks expose a
+public `state.json` and `action_schema.json`; this tool lets the worker inspect
+that state and perform auditable mock side effects. It never reads the task's
+private directory.
+"""
+
+from __future__ import annotations
+
+import argparse
+import copy
+import json
+import os
+import re
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+
+Json = dict[str, Any]
+
+
+def workspace() -> Path:
+    return Path(os.environ.get("JB_WORKSPACE", "/workspace")).resolve()
+
+
+def runtime_dir() -> Path:
+    path = workspace() / ".jarvisbench"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def load_json(path: Path, *, default: Any = None) -> Any:
+    if not path.is_file():
+        if default is not None:
+            return copy.deepcopy(default)
+        raise SystemExit(f"Missing benchmark file: {path.name}")
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"Invalid JSON in {path.name}: {exc}") from exc
+
+
+def save_json(path: Path, value: Any) -> None:
+    temp = path.with_suffix(path.suffix + ".tmp")
+    temp.write_text(
+        json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    temp.replace(path)
+
+
+def append_event(name: str, payload: Json) -> None:
+    event = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "event": name,
+        **payload,
+    }
+    with (runtime_dir() / "action_log.jsonl").open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n")
+
+
+def public_state_path() -> Path:
+    return workspace() / "state.json"
+
+
+def state() -> Json:
+    data = load_json(public_state_path(), default={"collections": {}})
+    if not isinstance(data, dict) or not isinstance(data.get("collections"), dict):
+        raise SystemExit("state.json must contain an object named 'collections'")
+    return data
+
+
+def schema() -> Json:
+    data = load_json(workspace() / "action_schema.json", default={"actions": {}})
+    if not isinstance(data, dict) or not isinstance(data.get("actions"), dict):
+        raise SystemExit("action_schema.json must contain an object named 'actions'")
+    return data
+
+
+def stable_id(record: Any) -> str:
+    if not isinstance(record, dict):
+        return ""
+    for key in (
+        "id",
+        "email_id",
+        "event_id",
+        "order_id",
+        "ride_id",
+        "message_id",
+        "reminder_id",
+        "task_id",
+        "listing_id",
+        "card_id",
+    ):
+        if key in record:
+            return str(record[key])
+    return ""
+
+
+def json_output(value: Any, *, status: int = 0) -> None:
+    print(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True))
+    raise SystemExit(status)
+
+
+def cmd_collections(_: argparse.Namespace) -> None:
+    data = state()["collections"]
+    json_output(
+        {
+            "collections": [
+                {"name": name, "count": len(value) if isinstance(value, list) else 1}
+                for name, value in sorted(data.items())
+            ]
+        }
+    )
+
+
+def match_filters(record: Any, filters: list[str]) -> bool:
+    if not filters:
+        return True
+    if not isinstance(record, dict):
+        return False
+    for item in filters:
+        if "=" not in item:
+            raise SystemExit(f"Invalid --where filter {item!r}; expected key=value")
+        key, expected = item.split("=", 1)
+        actual: Any = record
+        for part in key.split("."):
+            if not isinstance(actual, dict) or part not in actual:
+                return False
+            actual = actual[part]
+        if str(actual).casefold() != expected.casefold():
+            return False
+    return True
+
+
+def cmd_list(args: argparse.Namespace) -> None:
+    collections = state()["collections"]
+    if args.collection not in collections:
+        raise SystemExit(f"Unknown collection: {args.collection}")
+    value = collections[args.collection]
+    if isinstance(value, list):
+        value = [item for item in value if match_filters(item, args.where)]
+    elif args.where and not match_filters(value, args.where):
+        value = []
+    json_output({"collection": args.collection, "items": value})
+
+
+def cmd_get(args: argparse.Namespace) -> None:
+    collections = state()["collections"]
+    if args.collection not in collections:
+        raise SystemExit(f"Unknown collection: {args.collection}")
+    value = collections[args.collection]
+    if isinstance(value, list):
+        for record in value:
+            if stable_id(record) == args.record_id:
+                json_output(record)
+        raise SystemExit(f"No record {args.record_id!r} in {args.collection}")
+    if args.record_id not in {"singleton", stable_id(value)}:
+        raise SystemExit(f"No record {args.record_id!r} in {args.collection}")
+    json_output(value)
+
+
+def searchable_text(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, sort_keys=True).casefold()
+
+
+def cmd_search(args: argparse.Namespace) -> None:
+    collections = state()["collections"]
+    names = [args.collection] if args.collection else sorted(collections)
+    tokens = [token.casefold() for token in re.findall(r"\S+", args.query)]
+    matches: list[Json] = []
+    for name in names:
+        if name not in collections:
+            raise SystemExit(f"Unknown collection: {name}")
+        records = collections[name]
+        if not isinstance(records, list):
+            records = [records]
+        for record in records:
+            text = searchable_text(record)
+            if all(token in text for token in tokens):
+                matches.append(
+                    {
+                        "collection": name,
+                        "id": stable_id(record),
+                        "record": record,
+                    }
+                )
+    json_output({"query": args.query, "matches": matches})
+
+
+def parse_payload(raw: str) -> Json:
+    try:
+        value = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"--json must be a JSON object: {exc}") from exc
+    if not isinstance(value, dict):
+        raise SystemExit("--json must be a JSON object")
+    return value
+
+
+def check_type(key: str, value: Any, expected: str) -> None:
+    checks = {
+        "string": lambda item: isinstance(item, str),
+        "number": lambda item: isinstance(item, (int, float)) and not isinstance(item, bool),
+        "integer": lambda item: isinstance(item, int) and not isinstance(item, bool),
+        "boolean": lambda item: isinstance(item, bool),
+        "array": lambda item: isinstance(item, list),
+        "object": lambda item: isinstance(item, dict),
+    }
+    check = checks.get(expected)
+    if check is None:
+        raise SystemExit(f"Unsupported action-schema type {expected!r} for {key}")
+    if not check(value):
+        raise SystemExit(f"Action field {key!r} must have type {expected}")
+
+
+def validate_action(action_name: str, payload: Json, spec: Json, data: Json) -> None:
+    for key in spec.get("required", []):
+        if key not in payload:
+            raise SystemExit(f"Action {action_name!r} requires field {key!r}")
+    for key, expected in spec.get("types", {}).items():
+        if key in payload:
+            check_type(key, payload[key], str(expected))
+    for key, choices in spec.get("enum", {}).items():
+        if key in payload and payload[key] not in choices:
+            raise SystemExit(
+                f"Action field {key!r} must be one of: {', '.join(map(str, choices))}"
+            )
+
+    target = spec.get("target")
+    if target:
+        collection_name = target["collection"]
+        arg = target["argument"]
+        if collection_name not in data["collections"]:
+            raise SystemExit(f"Action target collection is missing: {collection_name}")
+        records = data["collections"][collection_name]
+        if not isinstance(records, list):
+            records = [records]
+        if not any(stable_id(record) == str(payload.get(arg, "")) for record in records):
+            raise SystemExit(
+                f"Action target {payload.get(arg)!r} not found in {collection_name}"
+            )
+
+
+def apply_effect(payload: Json, spec: Json, data: Json) -> None:
+    target = spec.get("target")
+    if target and spec.get("set"):
+        collection_name = target["collection"]
+        target_id = str(payload[target["argument"]])
+        records = data["collections"][collection_name]
+        if not isinstance(records, list):
+            records = [records]
+        for record in records:
+            if stable_id(record) == target_id:
+                for key, value in spec["set"].items():
+                    record[key] = payload.get(value["from_argument"]) if isinstance(
+                        value, dict
+                    ) and "from_argument" in value else value
+                break
+
+    append_to = spec.get("append_to")
+    if append_to:
+        collection = data["collections"].setdefault(append_to, [])
+        if not isinstance(collection, list):
+            raise SystemExit(f"Action output collection is not a list: {append_to}")
+        record = copy.deepcopy(payload)
+        id_field = spec.get("id_field", "id")
+        if id_field not in record:
+            record[id_field] = f"{append_to}_{len(collection) + 1:03d}"
+        record["created_at"] = datetime.now(timezone.utc).isoformat()
+        collection.append(record)
+
+
+def cmd_act(args: argparse.Namespace) -> None:
+    action_specs = schema()["actions"]
+    if args.action not in action_specs:
+        raise SystemExit(
+            f"Unknown action {args.action!r}. Allowed: {', '.join(sorted(action_specs))}"
+        )
+    payload = parse_payload(args.json)
+    data = state()
+    spec = action_specs[args.action]
+    validate_action(args.action, payload, spec, data)
+    apply_effect(payload, spec, data)
+    save_json(public_state_path(), data)
+    append_event("action", {"action": args.action, "arguments": payload})
+    json_output({"ok": True, "action": args.action, "arguments": payload})
+
+
+def cmd_ask(args: argparse.Namespace) -> None:
+    payload = {
+        "question": args.question.strip(),
+        "status": "requester_unavailable",
+    }
+    append_event("user_question", payload)
+    with (runtime_dir() / "questions.jsonl").open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n")
+    json_output(
+        {
+            "status": "requester_unavailable",
+            "message": (
+                "The requester is unavailable. Make the best reasonable, "
+                "reversible choice you can and continue the task."
+            ),
+        },
+        status=3,
+    )
+
+
+def cmd_status(_: argparse.Namespace) -> None:
+    action_path = runtime_dir() / "action_log.jsonl"
+    question_path = runtime_dir() / "questions.jsonl"
+    actions = (
+        [
+            line
+            for line in action_path.read_bytes().decode("utf-8").split("\n")
+            if line.strip()
+        ]
+        if action_path.exists()
+        else []
+    )
+    questions = (
+        [
+            line
+            for line in question_path.read_bytes().decode("utf-8").split("\n")
+            if line.strip()
+        ]
+        if question_path.exists()
+        else []
+    )
+    json_output(
+        {
+            "workspace": "/workspace",
+            "collections": sorted(state()["collections"]),
+            "allowed_actions": sorted(schema()["actions"]),
+            "logged_events": len(actions),
+            "questions_attempted": len(questions),
+        }
+    )
+
+
+def parser() -> argparse.ArgumentParser:
+    root = argparse.ArgumentParser(
+        prog="jb",
+        description="Inspect and operate the deterministic JarvisBench workspace.",
+    )
+    commands = root.add_subparsers(dest="command", required=True)
+
+    p = commands.add_parser("collections", help="List available app/state collections")
+    p.set_defaults(func=cmd_collections)
+
+    p = commands.add_parser("list", help="List records in one collection")
+    p.add_argument("collection")
+    p.add_argument("--where", action="append", default=[], metavar="KEY=VALUE")
+    p.set_defaults(func=cmd_list)
+
+    p = commands.add_parser("get", help="Read one record by stable id")
+    p.add_argument("collection")
+    p.add_argument("record_id")
+    p.set_defaults(func=cmd_get)
+
+    p = commands.add_parser("search", help="Search public state")
+    p.add_argument("query")
+    p.add_argument("--collection", default="")
+    p.set_defaults(func=cmd_search)
+
+    p = commands.add_parser("act", help="Perform one validated mock side effect")
+    p.add_argument("action")
+    p.add_argument("--json", required=True)
+    p.set_defaults(func=cmd_act)
+
+    p = commands.add_parser("ask", help="Attempt to ask the requester a question")
+    p.add_argument("question")
+    p.set_defaults(func=cmd_ask)
+
+    p = commands.add_parser("status", help="Show task runtime status")
+    p.set_defaults(func=cmd_status)
+    return root
+
+
+def main() -> int:
+    args = parser().parse_args()
+    args.func(args)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

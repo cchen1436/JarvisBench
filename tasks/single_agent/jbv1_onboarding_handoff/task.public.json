@@ -1,0 +1,65 @@
+{
+  "assets": {
+    "public": [
+      "public/output_contract.json",
+      "public/result_schema.json",
+      "public/sources/onboard/benefits.docx",
+      "public/sources/onboard/benefits_summary.docx",
+      "public/sources/onboard/direct_deposit_form.jpg",
+      "public/sources/onboard/emergency_contact_form.jpg",
+      "public/sources/onboard/form_i9_blank.pdf",
+      "public/sources/onboard/form_w4_blank.pdf",
+      "public/sources/onboard/hr_policy_code_of_conduct.pdf",
+      "public/sources/onboard/hr_policy_pto_and_leave.pdf",
+      "public/sources/onboard/hr_policy_remote_work.pdf",
+      "public/sources/onboard/it_setup_checklist.txt",
+      "public/sources/onboard/manager_followup_notes.txt",
+      "public/sources/onboard/org_chart.txt",
+      "public/sources/onboard/policies.pdf",
+      "public/sources/onboard/signed_direct_deposit.pdf",
+      "public/sources/onboard/signed_form_i9.pdf",
+      "public/sources/onboard/signed_form_w4.pdf",
+      "public/sources/onboard/signed_nda.pdf",
+      "public/sources/onboard/team_directory.docx",
+      "public/sources/onboard/welcome.pdf",
+      "public/sources/onboard/welcome_guide.docx"
+    ]
+  },
+  "baseline": {
+    "model": "nvidia/azure/anthropic/claude-opus-4-8",
+    "on_question": "continue_with_best_reversible_judgment",
+    "user_availability": "unavailable_after_brief"
+  },
+  "domain": "workplace",
+  "episode": {
+    "brief": "Audit the onboarding packet in sources for completeness, conflicts, and missing follow-ups. Produce forms.csv, checklist.md, handoff.md, and final.json in results. Do not fabricate signatures or completed training.",
+    "result_paths": [
+      "results/final.json",
+      "results/forms.csv",
+      "results/checklist.md",
+      "results/handoff.md"
+    ]
+  },
+  "runtime": {
+    "cpus": 8,
+    "family": "openclaw_workspace_v1",
+    "memory_gb": 16,
+    "modalities": [
+      "text",
+      "image"
+    ],
+    "worker_timeout_seconds": 1200
+  },
+  "schema_version": "1.0",
+  "source": {
+    "adaptation": "Retained the mixed PDF, image, DOCX, and text packet. Made the laptop logistics resolution dependent on manager-only context.",
+    "benchmark": "UniClawBench",
+    "license": "MIT",
+    "revision": "a8ac4df6c554178c339f42696e3afe688a61f4b7",
+    "task_id": "task_101_23_onboarding_packet",
+    "url": "https://github.com/HKU-MMLab/UniClawBench/blob/a8ac4df6c554178c339f42696e3afe688a61f4b7/tasks/task_101_23_onboarding_packet"
+  },
+  "summary": "Audit a mixed-format onboarding packet, reconcile contradictory instructions, and prepare a safe handoff for the new hire.",
+  "task_id": "jbv1_onboarding_handoff",
+  "title": "New-hire onboarding handoff with a logistics conflict"
+}

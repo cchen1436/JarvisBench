@@ -1,0 +1,17 @@
+{
+  "final_record_schema": "result_schema.json",
+  "notes": [
+    "These are artifact-shape requirements, not target answers.",
+    "Use evidence from the supplied task materials and record assumptions.",
+    "Keep consequential actions reversible when requester intent is unknown."
+  ],
+  "required_files": [
+    "results/final.json",
+    "results/test_report.md",
+    "results/customer_export/batch_export.py",
+    "results/customer_export/test_batch_export.py",
+    "results/customer_export/DECISION.md"
+  ],
+  "schema_version": "1.0",
+  "structured_artifacts": []
+}

@@ -1,0 +1,56 @@
+{
+  "assets": {
+    "public": [
+      "public/PROJECT.md",
+      "public/workstreams.json",
+      "public/output_contract.json",
+      "public/result_schema.json",
+      "public/README.md",
+      "public/state.json",
+      "public/action_schema.json",
+      "public/workstreams/filing"
+    ]
+  },
+  "baseline": {
+    "model": "nvidia/azure/anthropic/claude-opus-4-8",
+    "on_question": "continue_with_best_reversible_judgment",
+    "user_availability": "unavailable_after_brief"
+  },
+  "domain": "finance",
+  "episode": {
+    "brief": "Audit the latest filed charitable deduction and prepare the accountant follow-up package. Delegate connected evidence reconciliation and filing scenario preparation to two parallel workers, then integrate the exact evidence gap into one reversible recommendation. Use the local jb apps where appropriate; create only an unsent accountant draft and preserve requester-held evidence as an explicit decision boundary.",
+    "result_paths": [
+      "results/audit/donation_reconciliation.csv",
+      "results/audit/audit_memo.md",
+      "results/audit/final.json",
+      "results/filing/scenario_matrix.csv",
+      "results/filing/filing_checklist.md",
+      "results/filing/accountant_draft.md",
+      "results/donation_reconciliation.csv",
+      "results/filing_brief.md",
+      "results/filing_plan.json"
+    ],
+    "worker_count": 2
+  },
+  "runtime": {
+    "cpus": 8,
+    "family": "openclaw_mas_workspace_v1",
+    "memory_gb": 16,
+    "modalities": [
+      "text"
+    ],
+    "worker_timeout_seconds": 1800
+  },
+  "schema_version": "1.0",
+  "source": {
+    "adaptation": "Preserves the deterministic application state and adds a filing-scenario stream so one offline record changes both the evidence ledger and accountant recommendation.",
+    "benchmark": "MyPCBench-inspired JarvisBench composite",
+    "license": "Apache-2.0 plus original fixture",
+    "revision": "caf9c754ffe0b41c7e629e17fff19299774af1cb",
+    "task_id": "contradiction-f011+original_filing_fixture",
+    "url": "https://github.com/ljang0/MyPCBench"
+  },
+  "summary": "Reconcile a filed charitable deduction and prepare filing scenarios in parallel, then resolve a precise evidence gap that may depend on an offline taxpayer record.",
+  "task_id": "jbmav1_tax_filing_package",
+  "title": "Donation evidence audit and filing package"
+}

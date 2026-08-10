@@ -1,0 +1,14 @@
+{
+  "required": {
+    "results/postmortems/insights.md": "Cross-incident evidence synthesis",
+    "results/postmortems/action_register.csv": {"columns": ["action_id", "prevention_action", "domain", "owner", "source_incidents", "root_cause_addressed", "dependency", "due_window", "success_signal"], "minimum_rows": 10},
+    "results/control_lab/evaluate_controls.py": "Reproducible feasibility evaluator",
+    "results/control_lab/control_scores.csv": {"columns": ["initiative", "owner", "effort_points", "incidents_addressed", "coverage_per_point", "audit_evidence", "reversible"], "minimum_rows": 3},
+    "results/control_lab/test_report.md": "Control-evaluator test evidence",
+    "results/delivery/execution_matrix.csv": {"columns": ["initiative", "delivery_owners", "earliest_window", "dependency", "success_evidence", "organizational_risk"], "minimum_rows": 3},
+    "results/delivery/quarter_sequence.md": "Capacity-aware sequence for all candidate initiatives",
+    "results/delivery/exercise_protocol.md": "Repeatable validation and evidence-capture protocol",
+    "results/quarter_plan.md": "Integrated funded-program plan",
+    "results/remediation_plan.json": "Project-level priority and integration record"
+  }
+}

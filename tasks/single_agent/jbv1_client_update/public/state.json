@@ -1,0 +1,144 @@
+{
+  "collections": {
+    "drafts": [],
+    "messages": [
+      {
+        "channel": "DM",
+        "content": "Phoenix Project - Backend Status Update\n\nHi,\n\nQuick update on Phoenix backend:\n- API gateway: 90% complete, on track for March 10 delivery\n- Database migration: completed last Friday\n- Auth module: 75% done, estimated completion March 12\n\nTotal backend budget spent so far: $180,000 out of $250,000 allocated.\n\nOne concern: the payment integration depends on the auth module, so if auth slips, payment will slip too.\n\nLet me know if you need more details.\n\nAlice Chen\nProject Manager",
+        "is_read": false,
+        "message_id": "msg_2001",
+        "sender": "@pm-alice",
+        "tags": [
+          "inbox",
+          "important"
+        ],
+        "timestamp": "2026-03-16T09:00:00Z"
+      },
+      {
+        "channel": "DM",
+        "content": "Re: Phoenix Project - Auth Module Delay\n\nHey,\n\nHeads up — the auth module is actually at 60%, not 75% as Alice reported. She's using the old sprint numbers. We hit a blocker with the OAuth2 provider integration last week and lost 3 days.\n\nRevised estimate: auth module completion by March 18 (not March 12). This means payment integration won't start until March 19 at the earliest.\n\nAlso, we pulled in two contractors to help, which added $35,000 to the backend budget. New total spend: $215,000.\n\nI've told Alice about the revised timeline but I'm not sure she updated her numbers yet.\n\nBob Wang\nDev Lead",
+        "is_read": false,
+        "message_id": "msg_2002",
+        "sender": "@dev-lead-bob",
+        "tags": [
+          "inbox"
+        ],
+        "timestamp": "2026-03-16T11:30:00Z"
+      },
+      {
+        "channel": "DM",
+        "content": "Phoenix Project - Frontend/UI Update\n\nHi,\n\nFrontend status for Phoenix:\n- Landing page: shipped to staging, ready for review\n- Dashboard UI: 85% complete, waiting on API endpoints from backend team\n- Mobile responsive: not started yet, blocked by dashboard completion\n\nFrontend budget: $95,000 spent out of $120,000.\n\nNote: The dashboard depends on 3 backend API endpoints (user-stats, activity-feed, notifications). Bob told me they'd be ready by March 8, but I still don't have access. Could you check with the backend team?\n\nAlso, I heard from Alice that the overall project deadline is March 25, but the client email I saw mentioned March 22. Which one is correct?\n\nCarol Li\nLead Designer",
+        "is_read": false,
+        "message_id": "msg_2003",
+        "sender": "@designer-carol",
+        "tags": [
+          "inbox"
+        ],
+        "timestamp": "2026-03-16T14:00:00Z"
+      },
+      {
+        "channel": "DM",
+        "content": "Phoenix Project - Milestone Review Request\n\nHi,\n\nAs discussed in our kickoff, the final delivery deadline is March 22, 2026. We have a board presentation on March 23 and need the system fully operational by then.\n\nPlease provide a consolidated status report covering:\n1. Overall completion percentage\n2. Budget utilization vs. plan\n3. Any risks or blockers\n4. Confidence level for March 22 delivery\n\nWe need this report by end of day tomorrow (March 17).\n\nRegards,\nDirector Zhao\nPhoenix Corp",
+        "is_read": false,
+        "message_id": "msg_2004",
+        "sender": "@client-director",
+        "tags": [
+          "inbox",
+          "important"
+        ],
+        "timestamp": "2026-03-16T16:00:00Z"
+      },
+      {
+        "channel": "DM",
+        "content": "Re: Phoenix Project - Timeline Clarification\n\nHi,\n\nJust to clarify — I've been working with March 25 as the internal deadline, which gives us a 3-day buffer before the client's March 22 date. Sorry for the confusion.\n\nBut given Bob's latest update about the auth delay, even March 25 might be tight. If auth doesn't finish until March 18, and payment integration needs 5 days, that pushes payment to March 23.\n\nI think we need to discuss whether to:\nA) Request a 1-week extension from the client\nB) Cut scope (drop mobile responsive for v1)\nC) Add more resources to parallelize\n\nWhat's your call?\n\nAlice",
+        "is_read": false,
+        "message_id": "msg_2005",
+        "sender": "@pm-alice",
+        "tags": [
+          "inbox"
+        ],
+        "timestamp": "2026-03-16T17:30:00Z"
+      },
+      {
+        "channel": "DM",
+        "content": "Phoenix Project - Budget Alert\n\nHi,\n\nThis is an automated alert from the Finance department.\n\nProject: Phoenix\nTotal Approved Budget: $400,000\nTotal Spent to Date: $312,000 (78%)\nRemaining: $88,000\n\nBreakdown:\n- Backend: $215,000 (of $250,000 allocated)\n- Frontend: $95,000 (of $120,000 allocated)\n- QA/Testing: $2,000 (of $30,000 allocated)\n\nNote: Backend has exceeded original allocation by $0 but contractor costs ($35,000) were charged against the project contingency fund, not the backend line item. Effective backend spend from the backend line is still $180,000.\n\nPlease review and confirm.\n\nFinance Department",
+        "is_read": true,
+        "message_id": "msg_2006",
+        "sender": "@finance",
+        "tags": [
+          "inbox"
+        ],
+        "timestamp": "2026-03-16T18:00:00Z"
+      },
+      {
+        "channel": "DM",
+        "content": "Phoenix - QA Readiness\n\nHi,\n\nQA team is ready to start testing as soon as backend APIs are stable. We've prepared 240 test cases.\n\nHowever, we need at least 5 business days for full regression testing. If the final code freeze is March 22, we'd need code complete by March 15 — which has already passed.\n\nIf code isn't frozen until March 18-19, we can do an accelerated 3-day test cycle, but that covers only critical paths (about 60% of test cases). The remaining 40% would need to be deferred to a post-launch patch.\n\nPlease confirm the testing strategy.\n\nDave Zhou\nQA Lead",
+        "is_read": false,
+        "message_id": "msg_2007",
+        "sender": "@qa-lead",
+        "tags": [
+          "inbox"
+        ],
+        "timestamp": "2026-03-17T08:00:00Z"
+      },
+      {
+        "channel": "DM",
+        "content": "Re: Phoenix - API Endpoints for Frontend\n\nHi,\n\nRegarding Carol's request — the 3 dashboard API endpoints are actually ready since March 14. I deployed them to staging but forgot to update the access credentials. I've just sent Carol the new staging URL and API keys.\n\nSorry for the confusion. The endpoints are:\n- /api/user-stats (ready)\n- /api/activity-feed (ready)\n- /api/notifications (ready, but rate-limited to 100 req/min in staging)\n\nBob",
+        "is_read": false,
+        "message_id": "msg_2008",
+        "sender": "@dev-lead-bob",
+        "tags": [
+          "inbox"
+        ],
+        "timestamp": "2026-03-17T09:00:00Z"
+      },
+      {
+        "channel": "DM",
+        "content": "Nebula Project - Quick Update\n\nHi,\n\nUnrelated to Phoenix — just a quick heads up on Nebula Project.\n\nThe Nebula backend migration is 40% complete. We're on track for the April 15 deadline. Budget is at $85,000 of $200,000 allocated. No blockers at the moment, but we'll need to start the data migration dry-run by end of March.\n\nI'll send a more detailed Nebula status report next week.\n\nAlice",
+        "is_read": false,
+        "message_id": "msg_2009",
+        "sender": "@pm-alice",
+        "tags": [
+          "inbox"
+        ],
+        "timestamp": "2026-03-17T10:00:00Z"
+      },
+      {
+        "channel": "DM",
+        "content": "Re: Phoenix Project - Correction to My Earlier Numbers\n\nHi,\n\nSorry, I realized my earlier update had some outdated figures. Here are the corrected numbers:\n\n- Auth module: 70% complete (not 75% as I said before)\n- Auth estimated completion: March 15 (not March 12)\n- Backend budget spent: $192,000 (I miscounted a few invoices earlier)\n\nApologies for the confusion. These should be the accurate numbers now.\n\nAlice",
+        "is_read": false,
+        "message_id": "msg_2010",
+        "sender": "@pm-alice",
+        "tags": [
+          "inbox"
+        ],
+        "timestamp": "2026-03-17T11:00:00Z"
+      },
+      {
+        "channel": "DM",
+        "content": "URGENT: Phoenix - Security Vulnerability Found in Auth Module\n\nHi,\n\nOur security scan just flagged a P0 issue in the auth module:\n\n1. **Brute force vulnerability**: The login endpoint has no rate limiting or account lockout mechanism. An attacker can attempt unlimited password guesses.\n2. **Session token not invalidated on password change**: When a user changes their password, existing session tokens remain valid. This means if credentials are compromised, changing the password doesn't revoke attacker access.\n\nBoth issues are in the authentication module that Bob's team is building. These MUST be fixed before we can ship — they would fail any security audit.\n\nI've flagged this to Bob directly. This could impact the auth timeline.\n\nDave Zhou\nQA Lead",
+        "is_read": false,
+        "message_id": "msg_2011",
+        "sender": "@qa-lead",
+        "tags": [
+          "inbox",
+          "important"
+        ],
+        "timestamp": "2026-03-17T13:00:00Z"
+      },
+      {
+        "channel": "DM",
+        "content": "Re: Phoenix - Auth Security Issues & Timeline Impact\n\nHi,\n\nI've reviewed Dave's security findings. Both issues are legitimate and need to be fixed before launch.\n\nHere's the impact:\n\n1. **Brute force fix**: Adding rate limiting and account lockout. This is about half a day of work — straightforward.\n2. **Session token invalidation**: This is more involved. We need to change the session token format to include a generation counter, and invalidate all tokens when a password is changed. Estimated ~1 day of work.\n\nCombined, this adds approximately **1.5 days** to the auth timeline. Revised auth completion is now **March 19** (was March 18).\n\n**Important cascading impact**: The session token format change means Carol will need to update the frontend auth integration to handle the new token format. I estimate she'll need about **1 day** for that, and she can't start until we finalize the new token spec (which will be part of the auth fix). So frontend auth work can't finish until March 20.\n\nAlso — I saw Alice's \"corrected\" numbers in her latest message. Her 70% figure for auth is still wrong. We are at **60%** as I reported earlier. I'm not sure where she's getting her numbers from, but please use mine — I'm tracking the actual sprint board daily.\n\nBob",
+        "is_read": false,
+        "message_id": "msg_2012",
+        "sender": "@dev-lead-bob",
+        "tags": [
+          "inbox",
+          "important"
+        ],
+        "timestamp": "2026-03-17T15:00:00Z"
+      }
+    ],
+    "notes": []
+  }
+}

@@ -1,0 +1,4 @@
+initiative,owner,effort_points,incidents_addressed,audit_evidence,reversible
+rollout_guardrails,Release Engineering,8,4,staged-change logs,yes
+observability,SRE,5,3,alert and dashboard history,yes
+restore_rollback_drills,Database and SRE,8,3,executed recovery records,yes

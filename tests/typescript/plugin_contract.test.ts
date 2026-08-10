@@ -1,0 +1,409 @@
+import assert from "node:assert/strict";
+import crypto from "node:crypto";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import test from "node:test";
+import { fileURLToPath } from "node:url";
+
+const testDirectory = path.dirname(fileURLToPath(import.meta.url));
+const projectEventSchema = JSON.parse(
+  fs.readFileSync(
+    path.resolve(testDirectory, "../../configs/schemas/project-event.schema.json"),
+    "utf8",
+  ),
+);
+
+function assertObjectContract(
+  value: unknown,
+  schema: Record<string, any>,
+): asserts value is Record<string, unknown> {
+  assert.ok(value !== null && typeof value === "object" && !Array.isArray(value));
+  const record = value as Record<string, unknown>;
+  for (const field of schema.required || []) {
+    assert.ok(Object.hasOwn(record, field), `missing schema field ${field}`);
+  }
+  if (schema.additionalProperties === false) {
+    assert.deepEqual(
+      Object.keys(record).filter((field) => !(field in schema.properties)),
+      [],
+    );
+  }
+  for (const [field, specification] of Object.entries<Record<string, any>>(
+    schema.properties || {},
+  )) {
+    if (!Object.hasOwn(record, field)) continue;
+    const item = record[field];
+    if (specification.type === "object") {
+      assertObjectContract(item, specification);
+    } else if (specification.type === "integer") {
+      assert.equal(Number.isInteger(item), true, `${field} is not an integer`);
+      assert.ok(Number(item) >= Number(specification.minimum || 0));
+      if (specification.maximum !== undefined) {
+        assert.ok(Number(item) <= Number(specification.maximum));
+      }
+    } else if (specification.type === "string") {
+      assert.equal(typeof item, "string", `${field} is not text`);
+      assert.ok(String(item).length >= Number(specification.minLength || 0));
+      if (specification.maxLength !== undefined) {
+        assert.ok(String(item).length <= Number(specification.maxLength));
+      }
+      if (specification.pattern !== undefined) {
+        assert.match(String(item), new RegExp(String(specification.pattern)));
+      }
+      if (specification.format === "date-time") {
+        assert.equal(Number.isNaN(Date.parse(String(item))), false);
+      }
+    }
+    if (specification.enum !== undefined) {
+      assert.ok(specification.enum.includes(item), `${field} is outside its enum`);
+    }
+  }
+}
+
+function assertProjectEventEnvelope(value: unknown): void {
+  assertObjectContract(value, projectEventSchema);
+}
+
+const root = fs.mkdtempSync(path.join(os.tmpdir(), "jarvisbench-plugin-"));
+const controlRoot = path.join(root, "control");
+const registryPath = path.join(controlRoot, "registry.json");
+const eventPath = path.join(root, "events", "project_events.jsonl");
+const readyPath = path.join(controlRoot, "plugin_ready.json");
+const projectId = "project-1";
+const sessionId = "child-1";
+const sessionKey = "agent:main:subagent:child-1";
+const siblingId = "child-2";
+const siblingKey = "agent:main:subagent:child-2";
+
+process.env.JARVIS_MAS_PROJECT_ID = projectId;
+process.env.JARVIS_MAS_CONTROL_ROOT = controlRoot;
+process.env.JARVIS_MAS_REGISTRY_JSON = registryPath;
+process.env.JARVIS_HOOK_EVENTS_JSONL = eventPath;
+process.env.JARVIS_MAS_PLUGIN_READY_JSON = readyPath;
+process.env.JARVIS_MAS_PARENT_RUNTIME_SESSION_ID = "chat";
+process.env.JARVIS_MAS_PARENT_SESSION_KEY = "agent:main:chat";
+process.env.JARVIS_AUTONOMOUS_REVIEW = "1";
+process.env.JARVIS_MAS_DYNAMIC_REQUIRED = "1";
+process.env.JARVIS_MAS_PLUGIN_ROLE = "gateway";
+process.env.JARVIS_BATCH_SETTLE_MS = "5";
+process.env.JARVIS_REVIEW_POLL_MS = "25";
+process.env.JARVIS_REVIEW_TIMEOUT_MS = "3000";
+process.env.JARVIS_REGISTRATION_WAIT_MS = "50";
+
+fs.mkdirSync(controlRoot, { recursive: true });
+fs.writeFileSync(
+  registryPath,
+  JSON.stringify({
+    schema_version: "1.0",
+    kind: "dynamic_child_registry",
+    project_id: projectId,
+    parent_session_id: "chat",
+    parent_session_key: "agent:main:chat",
+    sessions: {
+      chat: {
+        project_id: projectId,
+        agent_id: "parent",
+        session_id: "chat",
+        session_key: "agent:main:chat",
+        parent_id: "parent",
+        role: "parent",
+        workstream_id: "",
+        status: "active",
+      },
+      [sessionId]: {
+        project_id: projectId,
+        agent_id: "worker-1",
+        session_id: sessionId,
+        session_key: sessionKey,
+        parent_id: "parent",
+        role: "worker",
+        workstream_id: "analysis",
+        status: "active",
+      },
+      [siblingId]: {
+        project_id: projectId,
+        agent_id: "worker-2",
+        session_id: siblingId,
+        session_key: siblingKey,
+        parent_id: "parent",
+        role: "worker",
+        workstream_id: "delivery",
+        status: "active",
+      },
+    },
+    aliases: {
+      chat: "chat",
+      "agent:main:chat": "chat",
+      [sessionId]: sessionId,
+      [sessionKey]: sessionId,
+      [siblingId]: siblingId,
+      [siblingKey]: siblingId,
+    },
+  }),
+);
+
+const pluginModule = await import(
+  "../../plugins/openclaw/jarvis_supervisor/index.ts"
+);
+const execModule = await import(
+  "../../plugins/openclaw/jarvis_supervisor/read_only_exec.ts"
+);
+
+function writeControl(
+  value: Record<string, unknown>,
+  exactSessionId = sessionId,
+): void {
+  const namespace = pluginModule.masSessionNamespace(exactSessionId);
+  const directory = path.join(controlRoot, "sessions", namespace);
+  fs.mkdirSync(directory, { recursive: true });
+  const target = path.join(directory, "control.json");
+  const temporary = `${target}.tmp`;
+  fs.writeFileSync(temporary, `${JSON.stringify(value)}\n`, { mode: 0o600 });
+  fs.renameSync(temporary, target);
+}
+
+function baseControl(
+  exactSessionId = sessionId,
+  exactSessionKey = sessionKey,
+  agentId = "worker-1",
+): Record<string, unknown> {
+  return {
+    schema_version: "1.0",
+    kind: "dynamic_session_control",
+    protocol_version: "1.0-release",
+    revision: 1,
+    project_id: projectId,
+    agent_id: agentId,
+    session_id: exactSessionId,
+    session_key: exactSessionKey,
+    parent_id: "parent",
+    role: "worker",
+    control_epoch: 0,
+    nonce: "a".repeat(48),
+    pause: { active: false, reason: "", source: "" },
+    active_review: null,
+    review_responses: [],
+    invalidations: [],
+    guidance_queue: [],
+    delivery_receipts: [],
+    application_receipts: [],
+  };
+}
+
+async function waitForReview(): Promise<Record<string, any>> {
+  const deadline = Date.now() + 2000;
+  while (Date.now() < deadline) {
+    if (fs.existsSync(eventPath)) {
+      const events = fs
+        .readFileSync(eventPath, "utf8")
+        .split("\n")
+        .filter(Boolean)
+        .map((line) => JSON.parse(line));
+      const review = events.find((event) => event.type === "jarvis.review.requested");
+      if (review) return review;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error("review event did not arrive");
+}
+
+test("read-only prefilter fails closed on shell mutation", () => {
+  assert.equal(
+    execModule.classifyReadOnlyExec("exec", { command: "rg needle src" }).readOnly,
+    true,
+  );
+  assert.equal(
+    execModule.classifyReadOnlyExec("exec", { command: "rg needle src > out.txt" })
+      .readOnly,
+    false,
+  );
+  assert.equal(pluginModule.classifyAction("write", { path: "results/a" }).consequential, true);
+  assert.equal(pluginModule.classifyAction("read", { path: "public/a" }).consequential, false);
+});
+
+test("dynamic registration and control namespaces are exact per session", () => {
+  const sibling = baseControl(siblingId, siblingKey, "worker-2");
+  writeControl(baseControl());
+  writeControl(sibling, siblingId);
+  assert.notEqual(
+    pluginModule.masSessionNamespace(sessionId),
+    pluginModule.masSessionNamespace(siblingId),
+  );
+  assert.equal(pluginModule.resolveMasSessionIdentity(siblingKey)?.session_id, siblingId);
+  assert.equal(pluginModule.resolveMasSessionIdentity("unknown"), null);
+  assert.equal(pluginModule.validateSessionControl(baseControl(), sessionId), true);
+  assert.equal(pluginModule.validateSessionControl(baseControl(), siblingId), false);
+  assert.equal(pluginModule.validateSessionControl(sibling, siblingId), true);
+});
+
+test("stale batch, action fingerprint, and sibling responses are rejected", () => {
+  const batch = {
+    runId: "run-1",
+    sessionId,
+    turnId: "turn-1",
+    batchId: "batch-1",
+    reviewId: "review-1",
+    epoch: 0,
+    nonce: "a".repeat(48),
+    expectedEventSeq: 17,
+    actionIds: ["action-1"],
+    actionFingerprints: ["b".repeat(64)],
+  };
+  const response = {
+    schema_version: "1.0",
+    kind: "review_response",
+    project_id: projectId,
+    run_id: "run-1",
+    session_id: sessionId,
+    turn_id: "turn-1",
+    batch_id: "batch-1",
+    review_id: "review-1",
+    control_epoch: 0,
+    next_control_epoch: 0,
+    nonce: "a".repeat(48),
+    next_nonce: "a".repeat(48),
+    expected_event_seq: 17,
+    action_ids: ["action-1"],
+    action_fingerprints: ["b".repeat(64)],
+    decision: "allow",
+  };
+  assert.ok(pluginModule.exactReviewResponse(response, batch));
+  assert.equal(
+    pluginModule.exactReviewResponse(
+      { ...response, action_fingerprints: ["c".repeat(64)] },
+      batch,
+    ),
+    null,
+  );
+  assert.equal(
+    pluginModule.exactReviewResponse({ ...response, expected_event_seq: 16 }, batch),
+    null,
+  );
+  assert.equal(
+    pluginModule.exactReviewResponse(
+      { ...response, session_id: siblingId },
+      batch,
+    ),
+    null,
+  );
+});
+
+test("a pause is session-local and leaves its sibling runnable", () => {
+  const paused = baseControl();
+  paused.pause = { active: true, reason: "targeted review", source: "test" };
+  writeControl(paused);
+  writeControl(baseControl(siblingId, siblingKey, "worker-2"), siblingId);
+  assert.equal(pluginModule.sessionPauseActive(sessionId), true);
+  assert.equal(pluginModule.sessionPauseActive(siblingId), false);
+});
+
+test("an unregistered dynamic child cannot bypass a consequential hold", async () => {
+  const handlers = new Map<string, Function>();
+  pluginModule.default.register({
+    source: "test-unregistered",
+    registerTool() {},
+    on(name: string, handler: Function) {
+      handlers.set(name, handler);
+    },
+  });
+  const beforeTool = handlers.get("before_tool_call");
+  assert.ok(beforeTool);
+  const result = await beforeTool!(
+    {
+      toolName: "write",
+      toolCallId: "call-unregistered",
+      params: { path: "results/late/result.txt", content: "must not escape" },
+    },
+    { sessionId: "agent:main:subagent:not-yet-registered", runId: "run-late" },
+  );
+  assert.equal(result?.block, true);
+  assert.match(String(result?.blockReason), /SESSION_UNREGISTERED/);
+});
+
+test("plugin holds a child mutation and releases only an exact response", async () => {
+  writeControl(baseControl());
+  const handlers = new Map<string, Function>();
+  const tools = new Map<string, Record<string, unknown>>();
+  const api = {
+    source: "test",
+    registerTool(tool: Record<string, unknown>) {
+      tools.set(String(tool.name), tool);
+    },
+    on(name: string, handler: Function) {
+      handlers.set(name, handler);
+    },
+  };
+  pluginModule.default.register(api);
+  assert.ok(tools.has("jarvis_control"));
+  assert.ok(fs.existsSync(readyPath));
+  const beforeTool = handlers.get("before_tool_call");
+  assert.ok(beforeTool);
+  const held = beforeTool!(
+    {
+      toolName: "write",
+      toolCallId: "call-1",
+      params: { path: "results/analysis/result.txt", content: "bounded" },
+    },
+    { sessionId, runId: "run-1" },
+  );
+  const review = await waitForReview();
+  assert.equal(review.payload.session_id, sessionId);
+  assert.equal(review.payload.raw_trace_included, undefined);
+  assert.ok(review.payload.expected_event_seq > 0);
+  assert.equal(review.payload.held_actions.length, 1);
+
+  const control = baseControl();
+  control.review_responses = [
+    {
+      schema_version: "1.0",
+      kind: "review_response",
+      control_id: "control-1",
+      project_id: projectId,
+      run_id: "run-1",
+      session_id: sessionId,
+      turn_id: review.payload.turn_id,
+      review_id: review.payload.review_id,
+      batch_id: review.payload.batch_id,
+      action_ids: review.payload.held_actions.map((item: any) => item.action_id),
+      action_fingerprints: review.payload.held_actions.map(
+        (item: any) => item.action_fingerprint,
+      ),
+      control_epoch: 0,
+      next_control_epoch: 0,
+      nonce: "a".repeat(48),
+      next_nonce: "a".repeat(48),
+      expected_event_seq: review.payload.expected_event_seq,
+      decision: "allow",
+      decision_id: "",
+      guidance: "",
+      guidance_sha256: "",
+      created_at: new Date().toISOString(),
+    },
+  ];
+  writeControl(control);
+  assert.equal(await held, undefined);
+
+  const events = fs
+    .readFileSync(eventPath, "utf8")
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => JSON.parse(line));
+  assert.ok(events.some((event) => event.type === "jarvis.review.allowed"));
+  for (const event of events) {
+    assertProjectEventEnvelope(event);
+    for (const field of [
+      "project_id",
+      "agent_id",
+      "session_id",
+      "parent_id",
+      "role",
+      "turn_id",
+      "batch_id",
+      "action_id",
+    ]) {
+      assert.equal(typeof event.payload[field], "string");
+      assert.ok(event.payload[field].length > 0);
+    }
+  }
+});

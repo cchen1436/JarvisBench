@@ -1,0 +1,32 @@
+{
+  "final_record_schema": "result_schema.json",
+  "notes": [
+    "These are artifact-shape requirements, not target answers.",
+    "Use evidence from the supplied task materials and record assumptions.",
+    "Keep consequential actions reversible when requester intent is unknown."
+  ],
+  "required_files": [
+    "results/final.json",
+    "results/insights.md",
+    "results/action_register.csv"
+  ],
+  "schema_version": "1.0",
+  "structured_artifacts": [
+    {
+      "format": "csv",
+      "minimum_rows": 10,
+      "path": "results/action_register.csv",
+      "required_columns": [
+        "action_id",
+        "prevention_action",
+        "domain",
+        "owner",
+        "source_incidents",
+        "root_cause_addressed",
+        "dependency",
+        "due_window",
+        "success_signal"
+      ]
+    }
+  ]
+}

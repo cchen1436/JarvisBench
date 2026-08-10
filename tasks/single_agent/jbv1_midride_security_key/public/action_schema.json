@@ -1,0 +1,30 @@
+{
+  "actions": {
+    "create_reminder": {
+      "append_to": "reminders",
+      "id_field": "reminder_id",
+      "required": [
+        "title",
+        "due_at",
+        "notes"
+      ],
+      "types": {
+        "due_at": "string",
+        "notes": "string",
+        "title": "string"
+      }
+    },
+    "draft_message": {
+      "append_to": "message_drafts",
+      "id_field": "draft_id",
+      "required": [
+        "to",
+        "body"
+      ],
+      "types": {
+        "body": "string",
+        "to": "string"
+      }
+    }
+  }
+}

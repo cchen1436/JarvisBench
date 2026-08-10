@@ -1,0 +1,49 @@
+{
+  "assets": {
+    "public": [
+      "public/output_contract.json",
+      "public/result_schema.json",
+      "public/sources/pm_2017_q1_db_outage.md",
+      "public/sources/pm_2019_q3_waf_regex.md",
+      "public/sources/pm_2022_q2_bgp_misconfig.md",
+      "public/sources/pm_2025_q1_outage.md",
+      "public/sources/pm_2025_q2_db_migration.md",
+      "public/sources/pm_2025_q3_config_drift.md"
+    ]
+  },
+  "baseline": {
+    "model": "nvidia/azure/anthropic/claude-opus-4-8",
+    "on_question": "continue_with_best_reversible_judgment",
+    "user_availability": "unavailable_after_brief"
+  },
+  "domain": "workplace",
+  "episode": {
+    "brief": "Review all six postmortems in sources. Identify recurring root causes, distinguish systemic from one-off failures, build at least ten concrete prevention actions with owners and evidence, and save insights.md, action_register.csv, and final.json in results.",
+    "result_paths": [
+      "results/final.json",
+      "results/insights.md",
+      "results/action_register.csv"
+    ]
+  },
+  "runtime": {
+    "cpus": 8,
+    "family": "openclaw_workspace_v1",
+    "memory_gb": 16,
+    "modalities": [
+      "text"
+    ],
+    "worker_timeout_seconds": 1200
+  },
+  "schema_version": "1.0",
+  "source": {
+    "adaptation": "Retained six postmortems and the cross-incident synthesis workload. Added an executive-owned first-funding decision.",
+    "benchmark": "UniClawBench",
+    "license": "MIT",
+    "revision": "a8ac4df6c554178c339f42696e3afe688a61f4b7",
+    "task_id": "task_101_31_postmortem_merge",
+    "url": "https://github.com/HKU-MMLab/UniClawBench/blob/a8ac4df6c554178c339f42696e3afe688a61f4b7/tasks/task_101_31_postmortem_merge"
+  },
+  "summary": "Synthesize six heterogeneous incident reports into systemic causes and a fundable prevention action register.",
+  "task_id": "jbv1_postmortem_actions",
+  "title": "Cross-incident prevention portfolio"
+}

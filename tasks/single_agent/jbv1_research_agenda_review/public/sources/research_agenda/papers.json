@@ -1,0 +1,52 @@
+[
+  {
+    "arxiv_id": "2005.11401",
+    "contribution": "Combines parametric generation with a dense non-parametric index and shows gains on knowledge-intensive tasks.",
+    "evidence_relevant_to_pilot": "Provenance and updatable knowledge motivate retrieval, but the paper does not solve bad-retrieval detection or citation calibration.",
+    "limitation": "Retrieved context quality remains an upstream dependency.",
+    "paper_id": "rag_2020",
+    "title": "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks",
+    "url": "https://arxiv.org/abs/2005.11401",
+    "year": 2020
+  },
+  {
+    "arxiv_id": "2310.11511",
+    "contribution": "Learns adaptive retrieval and reflection tokens for retrieval need, relevance, support, and generation quality.",
+    "evidence_relevant_to_pilot": "Supports adaptive retrieval and critique, but requires training and does not isolate the support calibration of the current pipeline.",
+    "limitation": "The intervention is not a drop-in test for a frozen model.",
+    "paper_id": "self_rag_2023",
+    "title": "Self-RAG: Learning to Retrieve, Generate, and Critique through Self-Reflection",
+    "url": "https://arxiv.org/abs/2310.11511",
+    "year": 2023
+  },
+  {
+    "arxiv_id": "2401.15884",
+    "contribution": "Uses a retrieval evaluator to trigger corrective retrieval actions and decompose then recompose noisy evidence.",
+    "evidence_relevant_to_pilot": "Direct prior art for retriever robustness when retrieved documents are irrelevant or incomplete.",
+    "limitation": "Its web-search extension is outside the frozen support corpus.",
+    "paper_id": "crag_2024",
+    "title": "Corrective Retrieval Augmented Generation",
+    "url": "https://arxiv.org/abs/2401.15884",
+    "year": 2024
+  },
+  {
+    "arxiv_id": "2309.15217",
+    "contribution": "Separates retrieval and generation quality with reference-free metrics for context relevance, answer relevance, and faithfulness.",
+    "evidence_relevant_to_pilot": "Provides a practical evaluation scaffold for the pilot's unsupported citation and irrelevant-context failures.",
+    "limitation": "Automatic metric calibration still needs human validation.",
+    "paper_id": "ragas_2023",
+    "title": "RAGAS: Automated Evaluation of Retrieval Augmented Generation",
+    "url": "https://arxiv.org/abs/2309.15217",
+    "year": 2023
+  },
+  {
+    "arxiv_id": "2307.03172",
+    "contribution": "Shows that relevant information position materially affects long-context performance, with middle positions often used less effectively.",
+    "evidence_relevant_to_pilot": "Motivates position-controlled stress tests before attributing failures only to retrieval relevance.",
+    "limitation": "It studies context use, not a complete support-domain RAG stack.",
+    "paper_id": "lost_middle_2023",
+    "title": "Lost in the Middle: How Language Models Use Long Contexts",
+    "url": "https://arxiv.org/abs/2307.03172",
+    "year": 2023
+  }
+]

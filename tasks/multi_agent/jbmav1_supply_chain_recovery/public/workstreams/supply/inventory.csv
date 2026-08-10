@@ -1,0 +1,4 @@
+lot_id,units,location,current_state,last_verified
+ONHAND-180,180,West DC,QC-cleared,2026-08-03T07:30:00-07:00
+LOT-771A,600,Pacific Components dock,conditional pending final certificate,2026-08-03T08:10:00-07:00
+LOT-771B,300,Pacific Components lab,quality hold,2026-08-03T08:10:00-07:00

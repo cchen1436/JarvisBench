@@ -1,0 +1,136 @@
+# JarvisBench
+
+JarvisBench evaluates how a control layer allocates scarce user attention
+during long-horizon agent work. The benchmark tasks, execution contracts, and
+evaluation boundary are the product. The included Jarvis controller is an
+optional reference implementation, not a prerequisite for running the
+benchmark.
+
+> **Release status:** this is an engineering staging tree, not a publishable
+> release. It has no top-level public `LICENSE`, per-task attribution still
+> requires final review, the pinned OpenClaw graph has unresolved critical npm
+> advisories, and the only real model-backed canary was rejected by the privacy
+> acceptance gate. A file-backed OpenClaw `SecretRef` remediation now passes an
+> offline Gateway/state scan, but it has not been authorized for a second real
+> canary. Do not redistribute this tree until these blockers are resolved.
+
+## Two independent axes
+
+| Setting | Agent collaboration | User interaction |
+|---|---|---|
+| `single_agent` | one worker; optional attention controller | text replay of one worker's bounded updates |
+| `multi_agent` | Parent execution manager, dynamic children, and a separate project-level attention controller | text replay of bounded project updates |
+
+The **setting** chooses execution topology. The **track** chooses what is
+evaluated:
+
+- `agent_collaboration` (Track 1) measures the agent-to-user direction. A
+  controller may hold a consequential action, request user judgment, and route
+  the resulting decision back to the affected execution node.
+- `user_interaction` (Track 2) measures the user-to-Jarvis direction. It is a
+  post-hoc text replay with early and late general/follow-up questions. It has no
+  worker, control-state, prompt, timing, artifact, or scoring handle.
+
+These are four combinations backed by shared contracts and orthogonal adapters,
+not four copied implementations. Historical `merge` and `split` labels describe
+reference-controller information flow; they are not aliases for single/multi or
+Track 1/Track 2.
+
+## Controller choices
+
+- `none`: the first-class baseline. No Jarvis or user model is required.
+- `external`: a participant implements the small `AttentionController` protocol.
+- `reference`: the optional provider-neutral Jarvis implementation. Provider
+  URL, model IDs, and credentials must be configured explicitly at runtime.
+
+The same benchmark tasks and worker-visible contracts apply to all controller
+choices. Official grading is a separate, sealed evaluator operation.
+
+## Quickstart
+
+From the repository root, validate everything without a model call:
+
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -e '.[test]'
+./scripts/validate.sh
+```
+
+Build the pinned staging Linux image. The build command also runs an offline,
+no-model container smoke: capability discovery, public-task checksum/privacy
+validation, and all four setting × track dry runs. Passing this smoke does not
+make the image an approved public-release artifact.
+
+```sh
+./scripts/build-image.sh
+```
+
+The image exposes the validation and configuration interfaces directly:
+
+```sh
+docker run --rm --platform linux/amd64 jarvisbench:dev capabilities
+docker run --rm --platform linux/amd64 jarvisbench:dev \
+  validate-runtime --runtime-only
+docker run --rm --platform linux/amd64 \
+  --mount "type=bind,src=$(pwd)/tasks,dst=/opt/jarvisbench/tasks,readonly" \
+  jarvisbench:dev validate-runtime
+docker run --rm --platform linux/amd64 jarvisbench:dev \
+  dry-run --setting multi_agent --track agent_collaboration --controller none
+```
+
+To rerun only the hardened container smoke:
+
+```sh
+./scripts/container-smoke.sh jarvisbench:dev linux/amd64
+```
+
+Run the isolated deterministic Track 2 smoke:
+
+```sh
+./scripts/run-track2-smoke.sh
+```
+
+`dry-run` validates configuration and topology only; it does not call a model or
+claim an end-to-end benchmark result. See [Quickstart](docs/QUICKSTART.md) for all
+four combinations and controller integration boundaries.
+
+The single-agent release surface currently includes the `SingleAgentWorkerPort`
+contract and deterministic `DryRunWorker`, but no built-in model-backed OpenClaw
+implementation of that port. A participant runtime must supply the port for a
+real single-agent episode; the no-model quickstart does not imply otherwise.
+
+## Repository map
+
+```text
+src/jarvisbench/core/       shared contracts, privacy guards, replay, control state
+src/jarvisbench/settings/   single-agent and multi-agent topology adapters
+src/jarvisbench/tracks/     Track 1 live control and Track 2 immutable replay
+src/jarvisbench/reference/  optional Jarvis, Luna, and reference routing logic
+tasks/                      participant-visible task projections and public assets
+evaluator/                  public handoff contract, not sealed evaluation assets
+plugins/                    OpenClaw supervisor integration
+runtime/                    pinned Docker/runtime inputs
+configs/schemas/            participant-facing event, task, and replay schemas
+examples/                   third-party controller examples
+tests/ and scripts/         no-model validation and release tooling
+```
+
+## Portability and privacy
+
+The executable release surface has no fixed cluster account, scheduler command,
+server filesystem path, runtime image archive path, provider endpoint, or API
+credential. Historical provider-qualified model IDs in public task baseline
+metadata identify the frozen measurement; they are not executable defaults.
+
+Task assets are mounted read-only. Mutable workspace, OpenClaw, control, event,
+Gateway, and session state belongs to an episode-local Linux filesystem or Docker
+named volume; only explicit results are exported. The public tree contains no
+sealed graders, rubrics, requester profiles, reference answers, raw research
+traces, or populated environment file.
+
+Read [Architecture](docs/ARCHITECTURE.md),
+[Privacy](docs/PRIVACY.md), and the
+[Release inventory](docs/RELEASE_INVENTORY.md) before integrating a runtime.
+The private SQSH bootstrap and canonical OCI build boundary are documented in
+[Runtime migration](docs/RUNTIME_MIGRATION.md).

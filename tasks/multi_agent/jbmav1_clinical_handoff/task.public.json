@@ -1,0 +1,51 @@
+{
+  "assets": {
+    "public": [
+      "public/PROJECT.md",
+      "public/workstreams.json",
+      "public/output_contract.json",
+      "public/result_schema.json",
+      "public/workstreams/medications",
+      "public/workstreams/handoff"
+    ]
+  },
+  "baseline": {
+    "model": "nvidia/azure/anthropic/claude-opus-4-8",
+    "on_question": "continue_with_best_reversible_judgment",
+    "user_availability": "unavailable_after_brief"
+  },
+  "domain": "healthcare",
+  "episode": {
+    "brief": "Prepare a simulated post-discharge medication and cardiology follow-up handoff. Delegate evidence reconciliation and visit communication to two parallel workers, then integrate their artifacts without diagnosing, prescribing, or silently resolving what the patient actually took.",
+    "result_paths": [
+      "results/medications/medication_list.csv",
+      "results/medications/safety_note.md",
+      "results/handoff/visit_brief.md",
+      "results/handoff/call_script.md",
+      "results/handoff_summary.md",
+      "results/handoff_plan.json"
+    ],
+    "worker_count": 2
+  },
+  "runtime": {
+    "cpus": 8,
+    "family": "openclaw_mas_workspace_v1",
+    "memory_gb": 16,
+    "modalities": [
+      "text"
+    ],
+    "worker_timeout_seconds": 1800
+  },
+  "schema_version": "1.0",
+  "source": {
+    "adaptation": "Retains the full simulated medication packet and adds an independent visit-communication stream so a patient-held fact must be routed consistently into two clinician-facing artifacts.",
+    "benchmark": "Pi-Bench plus JarvisBench composite",
+    "license": "Fictional benchmark materials",
+    "revision": "jarvisbench-single-agent-v1-20260730",
+    "task_id": "medication_reconciliation+followup_handoff",
+    "url": "https://arxiv.org/abs/2605.14678"
+  },
+  "summary": "Reconcile a simulated medication record and prepare the follow-up communication in parallel, then make one patient-held current-dose fact consistent across the clinical handoff.",
+  "task_id": "jbmav1_clinical_handoff",
+  "title": "Post-discharge medication and visit handoff"
+}

@@ -1,0 +1,60 @@
+{
+  "assets": {
+    "public": [
+      "public/PROJECT.md",
+      "public/workstreams.json",
+      "public/output_contract.json",
+      "public/result_schema.json",
+      "public/workstreams/engineering/caption_field",
+      "public/workstreams/field",
+      "public/workstreams/operations"
+    ]
+  },
+  "baseline": {
+    "model": "nvidia/azure/anthropic/claude-opus-4-8",
+    "on_question": "continue_with_best_reversible_judgment",
+    "user_availability": "unavailable_after_brief"
+  },
+  "domain": "coding",
+  "episode": {
+    "brief": "Prepare the streaming-caption production candidate. Delegate the initial mux repair, fixed field-trace analysis, and release observability/rollback planning to three parallel workers, then integrate their evidence into tested release code and a reversible cohort plan. Preserve owner authority over any behavior that depends on which cohort ships first.",
+    "result_paths": [
+      "results/engineering/caption_field/stream_mux.py",
+      "results/engineering/caption_field/test_stream_mux.py",
+      "results/engineering/caption_field/test_report.md",
+      "results/field/field_analysis.csv",
+      "results/field/rollout_options.md",
+      "results/field/recommendation.md",
+      "results/operations/readiness_matrix.csv",
+      "results/operations/monitoring_plan.md",
+      "results/operations/rollback_drill.md",
+      "results/release/stream_mux.py",
+      "results/release/test_stream_mux.py",
+      "results/release/test_report.md",
+      "results/rollout_runbook.md",
+      "results/rollout_decision.json"
+    ],
+    "worker_count": 3
+  },
+  "runtime": {
+    "cpus": 8,
+    "family": "openclaw_mas_workspace_v1",
+    "memory_gb": 16,
+    "modalities": [
+      "text"
+    ],
+    "worker_timeout_seconds": 1800
+  },
+  "schema_version": "1.0",
+  "source": {
+    "adaptation": "Preserves iterative caption debugging and adds fixed field-analysis and release-observability streams, so the owner decision appears only after code, cohort, and operational evidence converge.",
+    "benchmark": "SWE-Together-inspired JarvisBench composite",
+    "license": "metadata reference; fixture is original",
+    "revision": "811a70a28ff2",
+    "task_id": "jbv1_caption_field_retest+release_observability_fixture",
+    "url": "https://github.com/Togetherbench/SWE-Together"
+  },
+  "summary": "Repair a reproducible caption mux while field and release-operations workers expose a cohort-dependent correction boundary, then integrate one reversible accessibility rollout.",
+  "task_id": "jbmav1_caption_accessibility_release",
+  "title": "Streaming-caption accessibility release"
+}

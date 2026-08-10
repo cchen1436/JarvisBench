@@ -1,0 +1,10 @@
+{
+  "required": {
+    "results/travel/options.csv": {"columns": ["option", "airport_arrival", "buffer_minutes", "incremental_cost", "benefit", "risk", "reversible_until"], "minimum_rows": 2},
+    "results/travel/travel_timeline.md": "Ride, flight, and replacement timeline",
+    "results/continuity/readiness.md": "Presentation access and fallback assessment",
+    "results/continuity/message_drafts.md": "Unsent client and teammate contingency drafts",
+    "results/recovery_brief.md": "Integrated travel and work-continuity recommendation",
+    "results/recovery_plan.json": "Project-level branch and requester-fact record"
+  }
+}

@@ -1,0 +1,323 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//OpenClaw Bench//Calendar Scheduling Example//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+
+BEGIN:VEVENT
+UID:orig-001@example.com
+DTSTAMP:20260317T090000Z
+DTSTART:20260413T013000Z
+DTEND:20260413T020000Z
+SUMMARY:Engineering Standup
+ATTENDEE:mailto:alice@example.com
+ATTENDEE:mailto:bob@example.com
+ATTENDEE:mailto:carol@example.com
+END:VEVENT
+
+BEGIN:VEVENT
+UID:orig-002@example.com
+DTSTAMP:20260317T090000Z
+DTSTART:20260413T023000Z
+DTEND:20260413T033000Z
+SUMMARY:Product Planning Sync
+ATTENDEE:mailto:alice@example.com
+ATTENDEE:mailto:dave@example.com
+ATTENDEE:mailto:erin@example.com
+END:VEVENT
+
+BEGIN:VEVENT
+UID:orig-003@example.com
+DTSTAMP:20260317T090000Z
+DTSTART:20260413T040000Z
+DTEND:20260413T050000Z
+SUMMARY:Model Evaluation Review
+ATTENDEE:mailto:bob@example.com
+ATTENDEE:mailto:carol@example.com
+ATTENDEE:mailto:frank@example.com
+END:VEVENT
+
+BEGIN:VEVENT
+UID:orig-004@example.com
+DTSTAMP:20260317T090000Z
+DTSTART:20260413T053000Z
+DTEND:20260413T063000Z
+SUMMARY:Candidate Interview Loop
+ATTENDEE:mailto:dave@example.com
+ATTENDEE:mailto:heidi@example.com
+END:VEVENT
+
+BEGIN:VEVENT
+UID:orig-005@example.com
+DTSTAMP:20260317T090000Z
+DTSTART:20260413T070000Z
+DTEND:20260413T080000Z
+SUMMARY:Customer Escalation Review
+ATTENDEE:mailto:alice@example.com
+ATTENDEE:mailto:grace@example.com
+END:VEVENT
+
+BEGIN:VEVENT
+UID:orig-006@example.com
+DTSTAMP:20260317T090000Z
+DTSTART:20260413T083000Z
+DTEND:20260413T093000Z
+SUMMARY:Infrastructure Operations Check
+ATTENDEE:mailto:bob@example.com
+ATTENDEE:mailto:frank@example.com
+END:VEVENT
+
+BEGIN:VEVENT
+UID:orig-007@example.com
+DTSTAMP:20260317T090000Z
+DTSTART:20260414T013000Z
+DTEND:20260414T020000Z
+SUMMARY:Engineering Standup
+ATTENDEE:mailto:alice@example.com
+ATTENDEE:mailto:bob@example.com
+ATTENDEE:mailto:carol@example.com
+END:VEVENT
+
+BEGIN:VEVENT
+UID:orig-008@example.com
+DTSTAMP:20260317T090000Z
+DTSTART:20260414T023000Z
+DTEND:20260414T033000Z
+SUMMARY:Data Quality Triage
+ATTENDEE:mailto:carol@example.com
+ATTENDEE:mailto:erin@example.com
+ATTENDEE:mailto:frank@example.com
+END:VEVENT
+
+BEGIN:VEVENT
+UID:orig-009@example.com
+DTSTAMP:20260317T090000Z
+DTSTART:20260414T040000Z
+DTEND:20260414T050000Z
+SUMMARY:Research Roadmap Discussion
+ATTENDEE:mailto:alice@example.com
+ATTENDEE:mailto:bob@example.com
+ATTENDEE:mailto:grace@example.com
+END:VEVENT
+
+BEGIN:VEVENT
+UID:orig-010@example.com
+DTSTAMP:20260317T090000Z
+DTSTART:20260414T053000Z
+DTEND:20260414T063000Z
+SUMMARY:Vendor Procurement Call
+ATTENDEE:mailto:dave@example.com
+ATTENDEE:mailto:erin@example.com
+END:VEVENT
+
+BEGIN:VEVENT
+UID:orig-011@example.com
+DTSTAMP:20260317T090000Z
+DTSTART:20260414T070000Z
+DTEND:20260414T080000Z
+SUMMARY:Security Incident Retrospective
+ATTENDEE:mailto:frank@example.com
+ATTENDEE:mailto:heidi@example.com
+END:VEVENT
+
+BEGIN:VEVENT
+UID:orig-012@example.com
+DTSTAMP:20260317T090000Z
+DTSTART:20260414T083000Z
+DTEND:20260414T093000Z
+SUMMARY:Sales Enablement Briefing
+ATTENDEE:mailto:grace@example.com
+ATTENDEE:mailto:heidi@example.com
+END:VEVENT
+
+BEGIN:VEVENT
+UID:orig-013@example.com
+DTSTAMP:20260317T090000Z
+DTSTART:20260415T013000Z
+DTEND:20260415T020000Z
+SUMMARY:Engineering Standup
+ATTENDEE:mailto:alice@example.com
+ATTENDEE:mailto:bob@example.com
+ATTENDEE:mailto:carol@example.com
+END:VEVENT
+
+BEGIN:VEVENT
+UID:orig-014@example.com
+DTSTAMP:20260317T090000Z
+DTSTART:20260415T023000Z
+DTEND:20260415T033000Z
+SUMMARY:Weekly Executive Check-in
+ATTENDEE:mailto:alice@example.com
+ATTENDEE:mailto:dave@example.com
+ATTENDEE:mailto:grace@example.com
+END:VEVENT
+
+BEGIN:VEVENT
+UID:orig-015@example.com
+DTSTAMP:20260317T090000Z
+DTSTART:20260415T040000Z
+DTEND:20260415T050000Z
+SUMMARY:Offline Research Block
+ATTENDEE:mailto:carol@example.com
+ATTENDEE:mailto:frank@example.com
+END:VEVENT
+
+BEGIN:VEVENT
+UID:orig-016@example.com
+DTSTAMP:20260317T090000Z
+DTSTART:20260415T053000Z
+DTEND:20260415T063000Z
+SUMMARY:Platform Migration Review
+ATTENDEE:mailto:bob@example.com
+ATTENDEE:mailto:frank@example.com
+ATTENDEE:mailto:heidi@example.com
+END:VEVENT
+
+BEGIN:VEVENT
+UID:orig-017@example.com
+DTSTAMP:20260317T090000Z
+DTSTART:20260415T070000Z
+DTEND:20260415T080000Z
+SUMMARY:Partnership Negotiation
+ATTENDEE:mailto:erin@example.com
+ATTENDEE:mailto:grace@example.com
+END:VEVENT
+
+BEGIN:VEVENT
+UID:orig-018@example.com
+DTSTAMP:20260317T090000Z
+DTSTART:20260415T083000Z
+DTEND:20260415T093000Z
+SUMMARY:Finance Review
+ATTENDEE:mailto:dave@example.com
+ATTENDEE:mailto:heidi@example.com
+END:VEVENT
+
+BEGIN:VEVENT
+UID:orig-019@example.com
+DTSTAMP:20260317T090000Z
+DTSTART:20260416T013000Z
+DTEND:20260416T020000Z
+SUMMARY:Engineering Standup
+ATTENDEE:mailto:alice@example.com
+ATTENDEE:mailto:bob@example.com
+ATTENDEE:mailto:carol@example.com
+END:VEVENT
+
+BEGIN:VEVENT
+UID:orig-020@example.com
+DTSTAMP:20260317T090000Z
+DTSTART:20260416T023000Z
+DTEND:20260416T033000Z
+SUMMARY:Dataset Release Go/No-Go
+ATTENDEE:mailto:carol@example.com
+ATTENDEE:mailto:frank@example.com
+ATTENDEE:mailto:heidi@example.com
+END:VEVENT
+
+BEGIN:VEVENT
+UID:orig-021@example.com
+DTSTAMP:20260317T090000Z
+DTSTART:20260416T040000Z
+DTEND:20260416T050000Z
+SUMMARY:Customer Roadmap Review
+ATTENDEE:mailto:alice@example.com
+ATTENDEE:mailto:grace@example.com
+ATTENDEE:mailto:erin@example.com
+END:VEVENT
+
+BEGIN:VEVENT
+UID:orig-022@example.com
+DTSTAMP:20260317T090000Z
+DTSTART:20260416T053000Z
+DTEND:20260416T063000Z
+SUMMARY:Design Critique
+ATTENDEE:mailto:dave@example.com
+ATTENDEE:mailto:erin@example.com
+END:VEVENT
+
+BEGIN:VEVENT
+UID:orig-023@example.com
+DTSTAMP:20260317T090000Z
+DTSTART:20260416T070000Z
+DTEND:20260416T080000Z
+SUMMARY:Reliability Review
+ATTENDEE:mailto:bob@example.com
+ATTENDEE:mailto:frank@example.com
+END:VEVENT
+
+BEGIN:VEVENT
+UID:orig-024@example.com
+DTSTAMP:20260317T090000Z
+DTSTART:20260416T083000Z
+DTEND:20260416T093000Z
+SUMMARY:Support Handover
+ATTENDEE:mailto:grace@example.com
+ATTENDEE:mailto:heidi@example.com
+END:VEVENT
+
+BEGIN:VEVENT
+UID:orig-025@example.com
+DTSTAMP:20260317T090000Z
+DTSTART:20260417T013000Z
+DTEND:20260417T020000Z
+SUMMARY:Engineering Standup
+ATTENDEE:mailto:alice@example.com
+ATTENDEE:mailto:bob@example.com
+ATTENDEE:mailto:carol@example.com
+END:VEVENT
+
+BEGIN:VEVENT
+UID:orig-026@example.com
+DTSTAMP:20260317T090000Z
+DTSTART:20260417T023000Z
+DTEND:20260417T033000Z
+SUMMARY:Hiring Debrief
+ATTENDEE:mailto:dave@example.com
+ATTENDEE:mailto:heidi@example.com
+ATTENDEE:mailto:alice@example.com
+END:VEVENT
+
+BEGIN:VEVENT
+UID:orig-027@example.com
+DTSTAMP:20260317T090000Z
+DTSTART:20260417T040000Z
+DTEND:20260417T050000Z
+SUMMARY:Research Reading Group
+ATTENDEE:mailto:bob@example.com
+ATTENDEE:mailto:carol@example.com
+ATTENDEE:mailto:grace@example.com
+END:VEVENT
+
+BEGIN:VEVENT
+UID:orig-028@example.com
+DTSTAMP:20260317T090000Z
+DTSTART:20260417T053000Z
+DTEND:20260417T063000Z
+SUMMARY:Partner Integration Sync
+ATTENDEE:mailto:erin@example.com
+ATTENDEE:mailto:frank@example.com
+END:VEVENT
+
+BEGIN:VEVENT
+UID:orig-029@example.com
+DTSTAMP:20260317T090000Z
+DTSTART:20260417T070000Z
+DTEND:20260417T080000Z
+SUMMARY:Legal and Compliance Review
+ATTENDEE:mailto:dave@example.com
+ATTENDEE:mailto:grace@example.com
+END:VEVENT
+
+BEGIN:VEVENT
+UID:orig-030@example.com
+DTSTAMP:20260317T090000Z
+DTSTART:20260417T083000Z
+DTEND:20260417T093000Z
+SUMMARY:Weekly Wrap-up
+ATTENDEE:mailto:alice@example.com
+ATTENDEE:mailto:bob@example.com
+ATTENDEE:mailto:erin@example.com
+END:VEVENT
+
+END:VCALENDAR

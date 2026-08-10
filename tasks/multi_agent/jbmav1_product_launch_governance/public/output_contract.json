@@ -1,0 +1,24 @@
+{
+  "required": {
+    "results/site/final_site/index.html": "Complete responsive launch site",
+    "results/site/final_site/styles.css": "Site styles",
+    "results/site/site_qa.md": "Responsive, content, identity, and CTA checks",
+    "results/campaign/concepts/proof_readiness.html": "Proof-led concept",
+    "results/campaign/concepts/operator_calm.html": "Operator-calm concept",
+    "results/campaign/concepts/launch_momentum.html": "Launch-momentum concept",
+    "results/campaign/concept_matrix.csv": {
+      "columns": ["concept", "promise", "audience_expectation", "claim_risk", "identity_fit"],
+      "minimum_rows": 3
+    },
+    "results/campaign/recommendation.md": "Balanced concept comparison",
+    "results/governance/claim_register.csv": {
+      "columns": ["claim_id", "claim", "source", "approval_state", "release_gate"],
+      "minimum_rows": 6
+    },
+    "results/governance/gate_review.md": "Claim provenance and embargo analysis",
+    "results/governance/release_checklist.md": "Automatic and owner-controlled launch gates",
+    "results/campaign/final_campaign/index.html": "Selected campaign master",
+    "results/integration_review.md": "Cross-stream consistency review",
+    "results/launch_decision.json": "Identity and creative acceptance record"
+  }
+}

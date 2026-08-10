@@ -1,0 +1,10 @@
+{
+  "required": {
+    "results/medications/medication_list.csv": {"columns": ["medication", "indication", "documented_dose", "status", "source", "follow_up"], "minimum_rows": 6},
+    "results/medications/safety_note.md": "Non-prescriptive discrepancy and safety summary",
+    "results/handoff/visit_brief.md": "Clinician-facing follow-up brief",
+    "results/handoff/call_script.md": "Concise appointment call script",
+    "results/handoff_summary.md": "Integrated cross-stream handoff",
+    "results/handoff_plan.json": "Project-level patient-fact and integration record"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "final_record_schema": "result_schema.json",
+  "notes": [
+    "These are artifact-shape requirements, not target answers.",
+    "Use evidence from the supplied task materials and record assumptions.",
+    "Keep consequential actions reversible when requester intent is unknown."
+  ],
+  "required_files": [
+    "results/final.json",
+    "results/concept_matrix.csv",
+    "results/review.md",
+    "results/concepts/roi_proof.html",
+    "results/concepts/operator_calm.html",
+    "results/concepts/climate_momentum.html",
+    "results/final_campaign/index.html"
+  ],
+  "schema_version": "1.0",
+  "structured_artifacts": [
+    {
+      "format": "csv",
+      "minimum_rows": 3,
+      "path": "results/concept_matrix.csv",
+      "required_columns": [
+        "concept",
+        "central_promise",
+        "visual_character",
+        "proof_use",
+        "primary_risk"
+      ]
+    }
+  ]
+}

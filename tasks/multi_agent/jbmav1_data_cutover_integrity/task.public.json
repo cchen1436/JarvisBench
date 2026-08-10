@@ -1,0 +1,57 @@
+{
+  "assets": {
+    "public": [
+      "public/PROJECT.md",
+      "public/workstreams.json",
+      "public/output_contract.json",
+      "public/result_schema.json",
+      "public/workstreams/migration/sources",
+      "public/workstreams/export/customer_export"
+    ]
+  },
+  "baseline": {
+    "model": "nvidia/azure/anthropic/claude-opus-4-8",
+    "on_question": "continue_with_best_reversible_judgment",
+    "user_availability": "unavailable_after_brief"
+  },
+  "domain": "data",
+  "episode": {
+    "brief": "Prepare the customer migration cutover. Delegate record reconciliation and batch-export implementation to two parallel workers, then integrate their evidence into one auditable release policy and runbook. Preserve unresolved owner authority instead of silently choosing source precedence or failure semantics.",
+    "result_paths": [
+      "results/migration/master.csv",
+      "results/migration/summary.md",
+      "results/migration/conflicts.json",
+      "results/migration/conflict_review.csv",
+      "results/migration/final.json",
+      "results/export/customer_export/batch_export.py",
+      "results/export/customer_export/test_batch_export.py",
+      "results/export/customer_export/DECISION.md",
+      "results/export/test_report.md",
+      "results/export/final.json",
+      "results/cutover_runbook.md",
+      "results/cutover_plan.json"
+    ],
+    "worker_count": 2
+  },
+  "runtime": {
+    "cpus": 8,
+    "family": "openclaw_mas_workspace_v1",
+    "memory_gb": 16,
+    "modalities": [
+      "text"
+    ],
+    "worker_timeout_seconds": 1800
+  },
+  "schema_version": "1.0",
+  "source": {
+    "adaptation": "Combines the full CSV reconciliation corpus with a retry-safe export implementation so one late owner policy governs conflict quarantine and partial delivery.",
+    "benchmark": "UniClawBench plus HiL-Bench composite",
+    "license": "MIT plus original JarvisBench fixture",
+    "revision": "a8ac4df6c554178c339f42696e3afe688a61f4b7",
+    "task_id": "task_101_12_csv_pipeline_merge+batch_export",
+    "url": "https://github.com/HKU-MMLab/UniClawBench"
+  },
+  "summary": "Reconcile a customer migration and implement its batch exporter in parallel, then establish one policy for disputed records and mixed-validity delivery.",
+  "task_id": "jbmav1_data_cutover_integrity",
+  "title": "Customer migration reconciliation and cutover integrity"
+}

@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "decision": {
+      "additionalProperties": true,
+      "properties": {
+        "assumptions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "choice": {
+          "description": "The concrete selected outcome. State chosen values, entities, timing, and rejected alternative when material; do not give only a generic decision policy.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "options_considered": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2,
+          "type": "array"
+        },
+        "question_for_requester": {
+          "description": "The single concise question whose answer would most improve or validate the requester-owned choice.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "rationale": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "options_considered",
+        "choice",
+        "rationale",
+        "assumptions",
+        "question_for_requester"
+      ],
+      "type": "object"
+    },
+    "facts": {
+      "description": "Evidence-backed facts that drive the decision.",
+      "items": {
+        "type": [
+          "string",
+          "object"
+        ]
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "safety": {
+      "description": "How consequential actions were kept reversible.",
+      "type": [
+        "string",
+        "object"
+      ]
+    },
+    "situation": {
+      "description": "Concise description of the state discovered.",
+      "type": [
+        "string",
+        "object"
+      ]
+    }
+  },
+  "required": [
+    "situation",
+    "facts",
+    "decision",
+    "safety"
+  ],
+  "title": "JarvisBench common final decision record",
+  "type": "object"
+}

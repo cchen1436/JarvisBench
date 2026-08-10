@@ -1,0 +1,4 @@
+window,week,available_teams,restriction
+W1,2,Release Engineering|Platform,no database maintenance
+W2,6,SRE|Database|Platform,customer peak begins after Friday
+W3,10,Release Engineering|SRE,quarter-close evidence due after window

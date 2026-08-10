@@ -1,0 +1,9 @@
+claim_id,claim,source,approval_state,release_gate
+C1,Harbor Labs customer proof,shared launch packet,approved,faithful wording
+C2,90-day pilot,shared launch packet,approved,faithful wording
+C3,$1200 pilot price,shared launch packet,approved,exact amount
+C4,25 collaborator limit,shared launch packet,approved,exact limit
+C5,Request pilot access CTA,shared launch packet,approved,working CTA
+C6,Northstar Relay identity,brand system,owner-controlled,embargo confirmation
+C7,Operator-calm direction,campaign brief,owner-controlled,creative acceptance
+C8,Guaranteed readiness,no source,prohibited,do not publish

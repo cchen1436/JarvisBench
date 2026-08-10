@@ -1,0 +1,10 @@
+{
+  "name": "jarvisbench-openclaw-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pinned OpenClaw runtime for the JarvisBench container",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "openclaw": "2026.3.11"
+  }
+}

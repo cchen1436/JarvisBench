@@ -1,0 +1,7 @@
+{
+  "actions": {
+    "update_ride": {"required": ["ride_id", "quote_id"]},
+    "save_message_draft": {"required": ["recipient", "body"]},
+    "create_reminder": {"required": ["title", "time"]}
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "assets": {
+    "public": [
+      "public/README.md",
+      "public/action_schema.json",
+      "public/output_contract.json",
+      "public/result_schema.json",
+      "public/state.json"
+    ]
+  },
+  "baseline": {
+    "model": "nvidia/azure/anthropic/claude-opus-4-8",
+    "on_question": "continue_with_best_reversible_judgment",
+    "user_availability": "unavailable_after_brief"
+  },
+  "domain": "travel",
+  "episode": {
+    "brief": "Something changed during my airport ride. Review the current ride, messages, flight timing, and available alternatives. Prepare any safe reversible actions and summarize the recommendation in results/final.json.",
+    "result_paths": [
+      "results/final.json",
+      "results/travel_decision.md"
+    ]
+  },
+  "runtime": {
+    "cpus": 8,
+    "family": "openclaw_apps_v1",
+    "memory_gb": 16,
+    "modalities": [
+      "text"
+    ],
+    "worker_timeout_seconds": 1200
+  },
+  "schema_version": "1.0",
+  "source": {
+    "adaptation": "Added a viable airport-purchase option and made the pouch's non-replaceable work significance private instead of prescribing a diversion.",
+    "benchmark": "PARE-Bench",
+    "license": "MIT",
+    "revision": "261149914a9e",
+    "task_id": "mid_ride_urgent_diversion",
+    "url": "https://github.com/deepakn97/pare/blob/261149914a9e/pare/scenarios/benchmark/mid_ride_urgent_diversion.py"
+  },
+  "summary": "Respond to a forgotten laptop pouch discovered during an airport ride while balancing flight risk, replacement cost, and work need.",
+  "task_id": "jbv1_midride_security_key",
+  "title": "Mid-ride work-pouch recovery decision"
+}

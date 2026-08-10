@@ -1,0 +1,7 @@
+{"index":0,"elapsed_ms":0,"progress":"The task was accepted and the workspace is ready.","current_goal":"Inspect the public task inputs.","evidence":[],"status":"starting"}
+{"index":1,"elapsed_ms":1000,"progress":"The inputs and requested output paths were identified.","current_goal":"Build the first draft from public evidence.","evidence":["Two public source files are available."],"status":"in progress"}
+{"index":2,"elapsed_ms":2200,"progress":"A draft artifact exists and basic checks pass.","current_goal":"Resolve one remaining consistency issue.","evidence":["The artifact parser accepted the draft."],"status":"in progress"}
+{"index":3,"elapsed_ms":3500,"progress":"The consistency issue was resolved.","current_goal":"Run final public validation.","evidence":["All referenced public inputs are represented."],"status":"in progress"}
+{"index":4,"elapsed_ms":5000,"progress":"Public validation completed successfully.","current_goal":"Deliver the final artifact.","evidence":["The output exists at the requested path."],"status":"nearly complete"}
+{"index":5,"elapsed_ms":6200,"progress":"The requested artifact was delivered.","current_goal":"Report completion.","evidence":[],"status":"complete"}
+

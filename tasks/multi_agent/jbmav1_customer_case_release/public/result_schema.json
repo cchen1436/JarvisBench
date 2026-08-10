@@ -1,0 +1,27 @@
+{
+  "type": "object",
+  "required": ["status", "workers", "integration", "decision"],
+  "properties": {
+    "status": {"type": "string"},
+    "workers": {"type": "object"},
+    "integration": {
+      "type": "object",
+      "required": ["supported_claims", "release_invariants"],
+      "properties": {
+        "supported_claims": {"type": "array", "minItems": 3},
+        "release_invariants": {"type": "array", "minItems": 3}
+      }
+    },
+    "decision": {
+      "type": "object",
+      "required": ["choice", "options_considered", "question_for_requester", "assumption", "reversible_until"],
+      "properties": {
+        "choice": {"type": "string"},
+        "options_considered": {"type": "array", "minItems": 2},
+        "question_for_requester": {"type": "string"},
+        "assumption": {"type": "string"},
+        "reversible_until": {"type": "string"}
+      }
+    }
+  }
+}

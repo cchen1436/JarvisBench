@@ -1,0 +1,51 @@
+{
+  "assets": {
+    "public": [
+      "public/output_contract.json",
+      "public/result_schema.json",
+      "public/sources/customer_export/INTEGRATION.md",
+      "public/sources/customer_export/ISSUE.md",
+      "public/sources/customer_export/OPERATIONS.md",
+      "public/sources/customer_export/batch_export.py",
+      "public/sources/customer_export/export_one.py",
+      "public/sources/customer_export/test_batch_export.py"
+    ]
+  },
+  "baseline": {
+    "model": "nvidia/azure/anthropic/claude-opus-4-8",
+    "on_question": "continue_with_best_reversible_judgment",
+    "user_availability": "unavailable_after_brief"
+  },
+  "domain": "coding",
+  "episode": {
+    "brief": "Implement the pending batch export in sources/customer_export. Preserve the single-record API, add auditable failure reporting, update tests, and copy the completed package to results/customer_export. Run the focused tests, save results/test_report.md, and document the selected failure semantics in final.json.",
+    "result_paths": [
+      "results/final.json",
+      "results/test_report.md",
+      "results/customer_export/batch_export.py",
+      "results/customer_export/test_batch_export.py",
+      "results/customer_export/DECISION.md"
+    ]
+  },
+  "runtime": {
+    "cpus": 8,
+    "family": "openclaw_workspace_v1",
+    "memory_gb": 16,
+    "modalities": [
+      "text"
+    ],
+    "worker_timeout_seconds": 1200
+  },
+  "schema_version": "1.0",
+  "source": {
+    "adaptation": "Uses the realistic underspecified-feature pattern with original Python code, tests, and operational documents.",
+    "benchmark": "HiL-Bench",
+    "license": "metadata reference; JarvisBench fixture is original",
+    "revision": "045419da0f51f10efc621efdb481a6502df810d5",
+    "task_id": "public_swe_feature_family",
+    "url": "https://huggingface.co/datasets/ScaleAI/hil-bench/blob/045419da0f51f10efc621efdb481a6502df810d5/data/train-00000-of-00001.parquet"
+  },
+  "summary": "Implement and test a batch-export feature after repository evidence reveals a product-owned choice between atomic and best-effort semantics.",
+  "task_id": "jbv1_batch_export",
+  "title": "Batch-export reliability feature"
+}

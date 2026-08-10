@@ -1,0 +1,52 @@
+{
+  "assets": {
+    "public": [
+      "public/PROJECT.md",
+      "public/workstreams.json",
+      "public/output_contract.json",
+      "public/result_schema.json",
+      "public/action_schema.json",
+      "public/state.json",
+      "public/workstreams/continuity"
+    ]
+  },
+  "baseline": {
+    "model": "nvidia/azure/anthropic/claude-opus-4-8",
+    "on_question": "continue_with_best_reversible_judgment",
+    "user_availability": "unavailable_after_brief"
+  },
+  "domain": "travel",
+  "episode": {
+    "brief": "A message arrived during my active airport ride. Delegate live travel recovery and client-presentation continuity to two parallel workers, then integrate the safest reversible plan. Prepare actions and drafts only; do not change the ride or send anything without me.",
+    "result_paths": [
+      "results/travel/options.csv",
+      "results/travel/travel_timeline.md",
+      "results/continuity/readiness.md",
+      "results/continuity/message_drafts.md",
+      "results/recovery_brief.md",
+      "results/recovery_plan.json"
+    ],
+    "worker_count": 2
+  },
+  "runtime": {
+    "cpus": 8,
+    "family": "openclaw_mas_apps_v1",
+    "memory_gb": 16,
+    "modalities": [
+      "text"
+    ],
+    "worker_timeout_seconds": 1500
+  },
+  "schema_version": "1.0",
+  "source": {
+    "adaptation": "Retains the deterministic ride, message, flight, quote, and shop state and adds a coupled client-presentation continuity stream whose authentication dependency makes pouch contents consequential.",
+    "benchmark": "PARE-Bench plus JarvisBench composite",
+    "license": "Fictional benchmark materials",
+    "revision": "jarvisbench-single-agent-v1-20260730",
+    "task_id": "midride_security_key+presentation_continuity",
+    "url": "https://arxiv.org/abs/2606.04542"
+  },
+  "summary": "Evaluate a live airport diversion and protect a time-sensitive client presentation in parallel, then route one traveler-held fact into the shared recovery decision.",
+  "task_id": "jbmav1_travel_recovery",
+  "title": "Mid-ride airport and client continuity recovery"
+}

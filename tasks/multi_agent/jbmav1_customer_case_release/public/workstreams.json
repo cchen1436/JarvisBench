@@ -1,0 +1,14 @@
+{
+  "workstreams": [
+    {
+      "id": "evidence",
+      "label": "Pilot evidence reconstruction",
+      "brief": "Work only on the evidence packet under /workspace/workstreams/evidence. Recompute the before/after blocker-resolution statistics, reconstruct the eight-week workflow and supported customer quote, and write /workspace/results/evidence/metrics.csv, claims_evidence.csv, and evidence_memo.md. Separate observation from causality and do not infer publication authority."
+    },
+    {
+      "id": "editorial",
+      "label": "Case-study editorial package",
+      "brief": "Work only on the editorial packet under /workspace/workstreams/editorial. Create a polished public draft and publication checklist using only explicitly supported and approved material. Write /workspace/results/editorial/case_draft.md, case_draft.html, and publication_checklist.md. Preserve any metric placeholder or approval dependency for parent integration rather than inventing customer authorization."
+    }
+  ]
+}

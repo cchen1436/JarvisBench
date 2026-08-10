@@ -1,0 +1,13 @@
+{
+  "required": {
+    "results/audit/donation_reconciliation.csv": "Connected evidence ledger",
+    "results/audit/audit_memo.md": "Digital evidence audit",
+    "results/audit/final.json": "Audit facts and gap",
+    "results/filing/scenario_matrix.csv": "Filing posture options",
+    "results/filing/filing_checklist.md": "Evidence and safety checklist",
+    "results/filing/accountant_draft.md": "Unsent follow-up draft",
+    "results/donation_reconciliation.csv": "Integrated evidence ledger",
+    "results/filing_brief.md": "Integrated filing recommendation",
+    "results/filing_plan.json": "Project-level decision record"
+  }
+}

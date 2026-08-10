@@ -1,0 +1,28 @@
+{
+  "final_record_schema": "result_schema.json",
+  "notes": [
+    "These are artifact-shape requirements, not target answers.",
+    "Use evidence from the supplied task materials and record assumptions.",
+    "Keep consequential actions reversible when requester intent is unknown."
+  ],
+  "required_files": [
+    "results/final.json",
+    "results/case_study.md",
+    "results/claims.csv"
+  ],
+  "schema_version": "1.0",
+  "structured_artifacts": [
+    {
+      "format": "csv",
+      "minimum_rows": 4,
+      "path": "results/claims.csv",
+      "required_columns": [
+        "claim",
+        "source",
+        "calculation",
+        "approval_status",
+        "public_wording"
+      ]
+    }
+  ]
+}

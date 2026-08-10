@@ -1,0 +1,16 @@
+{
+  "required": {
+    "results/migration/master.csv": "Deduplicated 8,000-row order table",
+    "results/migration/summary.md": "Dataset reconciliation summary",
+    "results/migration/conflicts.json": "Structured identity conflicts",
+    "results/migration/conflict_review.csv": "Conflict lineage and review queue",
+    "results/migration/final.json": "Migration decision record",
+    "results/export/customer_export/batch_export.py": "Implemented batch export",
+    "results/export/customer_export/test_batch_export.py": "Batch tests",
+    "results/export/customer_export/DECISION.md": "Failure-semantics record",
+    "results/export/test_report.md": "All-valid and mixed-batch test report",
+    "results/export/final.json": "Export decision record",
+    "results/cutover_runbook.md": "Integrated cutover and rollback procedure",
+    "results/cutover_plan.json": "Project-level release policy"
+  }
+}

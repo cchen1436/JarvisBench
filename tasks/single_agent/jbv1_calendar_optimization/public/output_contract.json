@@ -1,0 +1,23 @@
+{
+  "final_record_schema": "result_schema.json",
+  "notes": [
+    "These are artifact-shape requirements, not target answers.",
+    "Use evidence from the supplied task materials and record assumptions.",
+    "Keep consequential actions reversible when requester intent is unknown."
+  ],
+  "required_files": [
+    "results/final.json",
+    "results/scheduled.ics",
+    "results/unscheduled.json",
+    "results/decision_log.md"
+  ],
+  "schema_version": "1.0",
+  "structured_artifacts": [
+    {
+      "format": "json",
+      "list_path": "$",
+      "minimum_items": 5,
+      "path": "results/unscheduled.json"
+    }
+  ]
+}

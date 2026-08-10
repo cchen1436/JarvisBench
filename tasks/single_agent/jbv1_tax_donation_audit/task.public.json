@@ -1,0 +1,46 @@
+{
+  "assets": {
+    "public": [
+      "public/README.md",
+      "public/action_schema.json",
+      "public/output_contract.json",
+      "public/result_schema.json",
+      "public/state.json"
+    ]
+  },
+  "baseline": {
+    "model": "nvidia/azure/anthropic/claude-opus-4-8",
+    "on_question": "continue_with_best_reversible_judgment",
+    "user_availability": "unavailable_after_brief"
+  },
+  "domain": "finance",
+  "episode": {
+    "brief": "Audit the charitable deduction on my latest filed tax return. Cross-check the matching full calendar year of card transactions and any donation acknowledgments in email, exclude false matches, quantify any unsupported gap, and recommend whether the claim holds, needs more support, or should be amended. Save only a draft accountant follow-up. Save donation_reconciliation.csv, audit_memo.md, and final.json under results.",
+    "result_paths": [
+      "results/final.json",
+      "results/donation_reconciliation.csv",
+      "results/audit_memo.md"
+    ]
+  },
+  "runtime": {
+    "cpus": 8,
+    "family": "openclaw_apps_v1",
+    "memory_gb": 16,
+    "modalities": [
+      "text"
+    ],
+    "worker_timeout_seconds": 1200
+  },
+  "schema_version": "1.0",
+  "source": {
+    "adaptation": "Preserved the tax-return, card-ledger, and receipt reconciliation kernel. Rebuilt the GUI state deterministically and added one non-digital owner record that becomes relevant only after the evidence gap is computed.",
+    "benchmark": "MyPCBench",
+    "license": "Apache-2.0",
+    "revision": "caf9c754ffe0b41c7e629e17fff19299774af1cb",
+    "task_id": "contradiction-f011",
+    "url": "https://github.com/ljang0/MyPCBench/blob/caf9c754ffe0b41c7e629e17fff19299774af1cb/tasks/final/all_tasks_with_grading.json"
+  },
+  "summary": "Reconcile a filed charitable deduction across tax records, card transactions, and email receipts, then decide the filing posture.",
+  "task_id": "jbv1_tax_donation_audit",
+  "title": "Charitable-deduction evidence audit"
+}

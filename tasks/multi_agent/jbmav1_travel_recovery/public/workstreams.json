@@ -1,0 +1,14 @@
+{
+  "workstreams": [
+    {
+      "id": "travel",
+      "label": "Live ride and airport recovery",
+      "brief": "Work only on the travel stream. Use `jb collections` and `jb status`, inspect the active ride, message, flight, quote, and airport shop state, and write /workspace/results/travel/options.csv plus /workspace/results/travel/travel_timeline.md. Compare continue and divert branches without changing the ride or guessing what else is in the pouch."
+    },
+    {
+      "id": "continuity",
+      "label": "Client presentation continuity",
+      "brief": "Work only on the continuity stream. Inspect /workspace/workstreams/continuity and write /workspace/results/continuity/readiness.md plus /workspace/results/continuity/message_drafts.md. Identify the authentication dependency, remote fallback, and communication checkpoints without claiming where the traveler's paired key is located."
+    }
+  ]
+}

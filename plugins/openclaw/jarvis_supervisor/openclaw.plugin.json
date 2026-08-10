@@ -1,0 +1,11 @@
+{
+  "id": "jarvisbench-mas-supervisor",
+  "name": "JarvisBench Dynamic MAS Supervisor",
+  "description": "Bounded events and session-namespaced held-action control for formal dynamic MAS split.",
+  "version": "0.1.0",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}

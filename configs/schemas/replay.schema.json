@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvisbench.invalid/schema/replay-frame.v1.json",
+  "title": "Bounded user-interaction replay frame",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["index", "elapsed_ms", "progress", "current_goal", "evidence", "status"],
+  "properties": {
+    "index": {"type": "integer", "minimum": 0},
+    "elapsed_ms": {"type": "integer", "minimum": 0},
+    "progress": {"type": "string", "maxLength": 2000},
+    "current_goal": {"type": "string", "maxLength": 1000},
+    "evidence": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {"type": "string", "maxLength": 1000}
+    },
+    "status": {"type": "string", "maxLength": 200}
+  }
+}
+

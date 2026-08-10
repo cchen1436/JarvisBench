@@ -1,0 +1,47 @@
+{
+  "assets": {
+    "public": [
+      "public/output_contract.json",
+      "public/result_schema.json",
+      "public/sources/research_agenda/README.md",
+      "public/sources/research_agenda/papers.json"
+    ]
+  },
+  "baseline": {
+    "model": "nvidia/azure/anthropic/claude-opus-4-8",
+    "on_question": "continue_with_best_reversible_judgment",
+    "user_availability": "unavailable_after_brief"
+  },
+  "domain": "research",
+  "episode": {
+    "brief": "Use sources/research_agenda to prepare next week's RAG research agenda. Verify the paper records, produce an evidence map, develop exactly three feasible and scientifically distinct experiment directions, compare their novelty and risks, and recommend one. Save evidence_map.csv, agenda.csv, agenda_memo.md, experiment_plan.md, and final.json.",
+    "result_paths": [
+      "results/final.json",
+      "results/evidence_map.csv",
+      "results/agenda.csv",
+      "results/agenda_memo.md",
+      "results/experiment_plan.md"
+    ]
+  },
+  "runtime": {
+    "cpus": 8,
+    "family": "openclaw_workspace_v1",
+    "memory_gb": 16,
+    "modalities": [
+      "text"
+    ],
+    "worker_timeout_seconds": 1200
+  },
+  "schema_version": "1.0",
+  "source": {
+    "adaptation": "Preserves research-oriented paper evaluation and follow-up design, but freezes sources and makes PI selection occur after a balanced agenda exists.",
+    "benchmark": "Pi-Bench",
+    "license": "Apache-2.0; paper metadata links to stable arXiv records",
+    "revision": "383910b1698758a198b86037c63a111c8edc32ad",
+    "task_id": "researcher_task_001",
+    "url": "https://github.com/Simplified-Reasoning/Pi-Bench"
+  },
+  "summary": "Turn a fixed literature packet into three equally executable research directions, then incorporate the PI's judgment after reviewing the agenda.",
+  "task_id": "jbv1_research_agenda_review",
+  "title": "Research agenda synthesis and PI review"
+}

@@ -1,0 +1,198 @@
+{
+  "canonical_identity": {
+    "frozen_single_modes": {
+      "merge": "f988217df4ae19ae2498b36b2f4a2f0e4a8380b61bef410bb946f173da75ade6",
+      "split": "6e82f3c1913275265b469d988f9803add1362ed180c54a3e30a9c431a51f4e61"
+    },
+    "multi_selection_receipt_sha256": "2dde6db963044bbc6fdd23295a21de192203750e19a7650fa5e2f02f01a7672f",
+    "release_receipt_sha256": "72f8ff9d90522b3db3f79640117f1d4843c31fb4cd22c4a44c304f91329fbdb0",
+    "single_selection_receipt_sha256": "e391ef1eba0f8b4dc19a48aeed94dad022885366e102a2766bd03990fc763229"
+  },
+  "denied_categories": [
+    "credentials_and_environment",
+    "requester_private_profiles_and_memory",
+    "evaluator_graders_rubrics_and_reference_material",
+    "raw_runs_traces_session_stores_and_logs",
+    "research_archives_reports_and_source_snapshots",
+    "server_runtime_images_and_bootstrap_archives",
+    "reference_controller_implementations"
+  ],
+  "format": "jarvisbench-public-task-export",
+  "policy_id": "jarvisbench-canonical-public-allowlist-v1",
+  "schema_version": "1.0",
+  "source_read_allowlist": [
+    "RELEASE.json#canonical_modes.{merge,split}.sha256_manifest_sha256",
+    "single_agent_v1/reports/release_manifest.json#tasks[].task_id",
+    "single_agent_v1/benchmark/tasks/<selected-task>/task.json#public-projection",
+    "single_agent_v1/benchmark/tasks/<selected-task>/public/**",
+    "multi_agent_v1/mas_v1/release_v1_tasks.txt",
+    "multi_agent_v1/mas_v1/benchmark/tasks/<selected-task>/task.json#public-projection",
+    "multi_agent_v1/mas_v1/benchmark/tasks/<selected-task>/public/**"
+  ],
+  "topologies": {
+    "multi_agent": {
+      "task_count": 10,
+      "task_ids": [
+        "jbmav1_data_cutover_integrity",
+        "jbmav1_travel_recovery",
+        "jbmav1_clinical_handoff",
+        "jbmav1_customer_case_release",
+        "jbmav1_tax_filing_package",
+        "jbmav1_product_launch_governance",
+        "jbmav1_research_program_release",
+        "jbmav1_caption_accessibility_release",
+        "jbmav1_incident_response_program",
+        "jbmav1_supply_chain_recovery"
+      ],
+      "tasks": {
+        "jbmav1_caption_accessibility_release": {
+          "public_assets_tree_sha256": "7c2a195b7370ba6cddb196be14181d3ccbb6f63dbbd429cf5c1874ec1abc0e6c",
+          "task_public_manifest_sha256": "3d8999846b1b35fb76953623207277973adaf3d8249a3dee32f9f9205f412146"
+        },
+        "jbmav1_clinical_handoff": {
+          "public_assets_tree_sha256": "9acee7b30c899ee49876a28a200f23c03c19c69016966a7ecb71b7953ccbda78",
+          "task_public_manifest_sha256": "82e825c341e0e65ec9dec7ad48525fc72208c9f8bfbd6b426842f2b0524804b5"
+        },
+        "jbmav1_customer_case_release": {
+          "public_assets_tree_sha256": "052b9ee005e317f8157cea61dd4ccd0ee8b68516b5814789d081d69b1ce6af7f",
+          "task_public_manifest_sha256": "cca5197fcd9275db77f6c320fceb391dc58e4fae0665f5bbb48b14a320f358e1"
+        },
+        "jbmav1_data_cutover_integrity": {
+          "public_assets_tree_sha256": "ee653591b309444176b494758e98385dce91b0dc9456534368b3a3479213e3e7",
+          "task_public_manifest_sha256": "5750db9ffe0a63945a4caa70ec65830327d04ba77f7366565438f5f4274d3d89"
+        },
+        "jbmav1_incident_response_program": {
+          "public_assets_tree_sha256": "802f48129d917f3f0916ea8e45ffedd7c397b1045f11a210124d46be17432898",
+          "task_public_manifest_sha256": "c626d77f8842d015deb5077a705bef4cb976447caf72f6a483e150619974cc94"
+        },
+        "jbmav1_product_launch_governance": {
+          "public_assets_tree_sha256": "686f0ee52532ff8ba75573a2848bcf963ba7b24cd1be11814836479e072b0e98",
+          "task_public_manifest_sha256": "1149df93d9a806e6f8f349e9b6e8b09487e192719d41f607841aca8e29cc7605"
+        },
+        "jbmav1_research_program_release": {
+          "public_assets_tree_sha256": "76f1ed01686b982d9c5ae6d6b13b585b23f8671e3e59e27923ddb631cdcc4ec9",
+          "task_public_manifest_sha256": "b5d1e9547ae5ec7064e05a4a70bae098e1499b321764ff4a2f54b15406a262b3"
+        },
+        "jbmav1_supply_chain_recovery": {
+          "public_assets_tree_sha256": "8e92a69908fcdc7215ee878e37e601a0e1a05c86727a6856763ac2b28cc11e73",
+          "task_public_manifest_sha256": "3f2ebb3bd51c93e15fc7cf9aa33361547e292376c77cf07f47aaf0657e26613d"
+        },
+        "jbmav1_tax_filing_package": {
+          "public_assets_tree_sha256": "ce3526b3662e365872af950bc91645e8f98ae0cb507852d398852cf0fbefee06",
+          "task_public_manifest_sha256": "46f44a821bd8e25d4e188466fb01a74c2340bc2fd5ddd61b31807ebfac5ab733"
+        },
+        "jbmav1_travel_recovery": {
+          "public_assets_tree_sha256": "4086f2be97512ff9751a53cb6714ae52352e6d50a494780bc58f3b322b631ddd",
+          "task_public_manifest_sha256": "c4a964bc45c9c895d17e5811e33f5e99998e054553a8def17320cd065af997cd"
+        }
+      }
+    },
+    "single_agent": {
+      "task_count": 20,
+      "task_ids": [
+        "jbv1_batch_export",
+        "jbv1_calendar_optimization",
+        "jbv1_caption_field_retest",
+        "jbv1_client_update",
+        "jbv1_customer_case_study",
+        "jbv1_customer_migration",
+        "jbv1_experiment_escalation",
+        "jbv1_injection_triage",
+        "jbv1_marketing_artifact_acceptance",
+        "jbv1_medication_reconciliation",
+        "jbv1_meeting_minutes",
+        "jbv1_midride_security_key",
+        "jbv1_onboarding_handoff",
+        "jbv1_postmortem_actions",
+        "jbv1_product_launch_site",
+        "jbv1_research_agenda_review",
+        "jbv1_saas_contract",
+        "jbv1_tax_donation_audit",
+        "jbv1_tender_selection",
+        "jbv1_var_model_review"
+      ],
+      "tasks": {
+        "jbv1_batch_export": {
+          "public_assets_tree_sha256": "f65d3b84c7a2707626dc0b601c9e78242755a093d2c35fda7a98376e9ad181de",
+          "task_public_manifest_sha256": "efada19104e1f61189fbfe23f1226364f3d285485b6053d8ce9586e445f9daaa"
+        },
+        "jbv1_calendar_optimization": {
+          "public_assets_tree_sha256": "ee3a09928e1c4072a5672b513e793d853becdf5e36e2c715b80bb5e487834068",
+          "task_public_manifest_sha256": "ca217d92a43acc3c9fc1a710d9bcd7368df6cf5e3a539c252bb0c3e48f221526"
+        },
+        "jbv1_caption_field_retest": {
+          "public_assets_tree_sha256": "9ce7bc4a993763635bd48df80e1456ee33fcb293da75a6cb0622e2b973f38aed",
+          "task_public_manifest_sha256": "3ac2e7c4ebedc18caec60484a35c7fb3f95c010fa4285401c8a693599919c7c0"
+        },
+        "jbv1_client_update": {
+          "public_assets_tree_sha256": "a7cbc66cc8e7b4692b8238fe13f2081da7c289d09741468f99c3f30cbe935bda",
+          "task_public_manifest_sha256": "ae3b9c78360ba13b7a830ad323165087266a979202ed9c45d320f772d61f94f5"
+        },
+        "jbv1_customer_case_study": {
+          "public_assets_tree_sha256": "fd63abd993ad5b363b4b76043fa4b62e81b63202539cb71a215258a62c0197d2",
+          "task_public_manifest_sha256": "1e7a13036420ad4df261833b4dcb9da36c8658f4f39b4c5daf7265da354ff483"
+        },
+        "jbv1_customer_migration": {
+          "public_assets_tree_sha256": "d5db8e135ca458a8680995707ea9dd92b4af8d3979084f0ff46e89df43c62d5a",
+          "task_public_manifest_sha256": "abccb704abda6c2fdc8f2a0454086fd2fd31bf7dc44dd31c3b137f5c471b9676"
+        },
+        "jbv1_experiment_escalation": {
+          "public_assets_tree_sha256": "04cb249cf08ebc77c70be3992c9fb3e8a85283ed3ae9f5b71aa37229e885227e",
+          "task_public_manifest_sha256": "bf5821be2a1d9ba94e502f37d979b162b9f577a16a78f8988a26abc0d7632350"
+        },
+        "jbv1_injection_triage": {
+          "public_assets_tree_sha256": "3fe9e60d8d8d100cf6b413e0593a01cab99f123c99404f2fdceaae84524ee717",
+          "task_public_manifest_sha256": "a95601ee2a226e06dcc030b560c6749595f8d601d01cbd4410d0259a027455f6"
+        },
+        "jbv1_marketing_artifact_acceptance": {
+          "public_assets_tree_sha256": "f6bd2d544d21089678b003298ff4ce2aa882fcceb50e7a2ed572d84e3c220718",
+          "task_public_manifest_sha256": "4327ae6750f8a0291bf95b74a3069adcc0392d7b1c3d916832e5c551cf7908b2"
+        },
+        "jbv1_medication_reconciliation": {
+          "public_assets_tree_sha256": "78bf5cdf147b59d6cda490fe60a6c71e1002b51e40dc83bd79afc4385c88a20f",
+          "task_public_manifest_sha256": "b6ffd58e66136cf9207c1f5261f3791c113c0f4a6f0da359407eb25d8893e040"
+        },
+        "jbv1_meeting_minutes": {
+          "public_assets_tree_sha256": "fef50c5083a695b5ba37ab507c3f5b5d91863e04e11924fa2f5b8babd31fcd33",
+          "task_public_manifest_sha256": "9081f8b5769121c40e46d3f6feb6373a1c5069d5f56afc57464530eb93da12bf"
+        },
+        "jbv1_midride_security_key": {
+          "public_assets_tree_sha256": "19d4218973a49658c8e5ad97a28c06e4c7bd2ae9b6c242ab1df6c35b931ec91d",
+          "task_public_manifest_sha256": "e2231ccf799332d3a4c7689260de030e072a7a6e769b233e6ab2a443cce36db0"
+        },
+        "jbv1_onboarding_handoff": {
+          "public_assets_tree_sha256": "4b9cfcf0a1563cba3a5551a8ab6c870a2eb9f6998c67d3d92e4431285154146b",
+          "task_public_manifest_sha256": "e9f5dfec8bbbaeb1785cf58793447103ad4b0d5460240d01e7d3a8a74d3df81f"
+        },
+        "jbv1_postmortem_actions": {
+          "public_assets_tree_sha256": "b402184c827b812c3cebb005ae8de4a063eced8d9459521b1f497229fed31298",
+          "task_public_manifest_sha256": "5c26ad70222780080db2ac9c2beb72ea64ad3eaec47dd58f4fdf436c60c27002"
+        },
+        "jbv1_product_launch_site": {
+          "public_assets_tree_sha256": "765fdbf43d36bb20bcc311cb27970c5196e77b83e43ad7cf311a32f0dfc4fe7b",
+          "task_public_manifest_sha256": "2e0643b414598066bc3e4863f612a6d04b2b78da39329c2e43c0a4ba14e71914"
+        },
+        "jbv1_research_agenda_review": {
+          "public_assets_tree_sha256": "5b8d578f5437d862c6fd37c9c0e4b0fe770a289a211308fb672c6f202394a36f",
+          "task_public_manifest_sha256": "7cd7a3106b76ae7c2d8444536283b21aaecf4d890c67476bfbd6f64b9d883aed"
+        },
+        "jbv1_saas_contract": {
+          "public_assets_tree_sha256": "4bd63af0c1ef412753ccdd2c31be024f2363e920b33ac8ac7c3a0d3db84fad30",
+          "task_public_manifest_sha256": "c37a2a939b90557d4c240fe7c1562d1218e9588c1d022bfe16b0d8d96bada98d"
+        },
+        "jbv1_tax_donation_audit": {
+          "public_assets_tree_sha256": "dfb3a3d7b911eb9fbde368eeb9268ec53a11cde9f32481feaa43daec37e4d1c4",
+          "task_public_manifest_sha256": "51296ae90f8f7d563c105f76e1a70fd23bbf0c82f19252a3e3c67788e6497412"
+        },
+        "jbv1_tender_selection": {
+          "public_assets_tree_sha256": "2d73de328b31d669683abfc8ec51a073c45876a4143d50d526f7d03f8f5f1397",
+          "task_public_manifest_sha256": "ae9b464adae888f4a77cdb8200aed08c9ca7c0cd875701e78c10872ae91e26be"
+        },
+        "jbv1_var_model_review": {
+          "public_assets_tree_sha256": "8eff353c3a5c6135c69fc1d37ef045fe8422dd3d264918a5a3a70617756b3a58",
+          "task_public_manifest_sha256": "eeb4f2f1c6357c1a41a73328904ccf84ba7b815abe53f3940cce916eadc55a17"
+        }
+      }
+    }
+  }
+}

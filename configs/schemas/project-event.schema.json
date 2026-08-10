@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvisbench.invalid/schema/project-event.v1.json",
+  "title": "JarvisBench dynamic MAS project event",
+  "description": "The append-only envelope emitted by the OpenClaw Jarvis supervisor. Event-specific fields remain inside payload; every payload carries the complete routing identity.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["seq", "event_id", "ts", "type", "payload"],
+  "properties": {
+    "seq": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "event_id": {
+      "type": "string",
+      "pattern": "^event-[A-Za-z0-9-]{1,128}$"
+    },
+    "ts": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "type": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.-]{0,127}$"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "project_id",
+        "agent_id",
+        "session_id",
+        "parent_id",
+        "role",
+        "turn_id",
+        "batch_id",
+        "action_id"
+      ],
+      "properties": {
+        "project_id": {"type": "string", "minLength": 1, "maxLength": 240},
+        "agent_id": {"type": "string", "minLength": 1, "maxLength": 240},
+        "session_id": {"type": "string", "minLength": 1, "maxLength": 240},
+        "parent_id": {"type": "string", "minLength": 1, "maxLength": 240},
+        "role": {"enum": ["worker", "parent", "jarvis", "user"]},
+        "turn_id": {"type": "string", "minLength": 1, "maxLength": 240},
+        "batch_id": {"type": "string", "minLength": 1, "maxLength": 240},
+        "action_id": {"type": "string", "minLength": 1, "maxLength": 240}
+      }
+    }
+  }
+}

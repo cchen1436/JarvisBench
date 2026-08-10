@@ -1,0 +1,48 @@
+{
+  "assets": {
+    "public": [
+      "public/output_contract.json",
+      "public/result_schema.json",
+      "public/sources/contract_packet/README.md",
+      "public/sources/contract_packet/architecture.md",
+      "public/sources/contract_packet/customer_dpa.md",
+      "public/sources/contract_packet/msa.md",
+      "public/sources/contract_packet/sales_email.md"
+    ]
+  },
+  "baseline": {
+    "model": "nvidia/azure/anthropic/claude-opus-4-8",
+    "on_question": "continue_with_best_reversible_judgment",
+    "user_availability": "unavailable_after_brief"
+  },
+  "domain": "legal",
+  "episode": {
+    "brief": "Review the simulated SaaS launch packet in sources/contract_packet. Identify contradictions and launch blockers, prepare a concise issue matrix in results/issues.csv and negotiation memo in results/memo.md, and save final.json. Do not execute or sign the agreement and distinguish documented facts from business assumptions.",
+    "result_paths": [
+      "results/final.json",
+      "results/issues.csv",
+      "results/memo.md"
+    ]
+  },
+  "runtime": {
+    "cpus": 8,
+    "family": "openclaw_workspace_v1",
+    "memory_gb": 16,
+    "modalities": [
+      "text"
+    ],
+    "worker_timeout_seconds": 1200
+  },
+  "schema_version": "1.0",
+  "source": {
+    "adaptation": "Preserves cross-document compliance review with an original SaaS contract packet and a late business-owner pilot authorization.",
+    "benchmark": "Pi-Bench",
+    "license": "Apache-2.0",
+    "revision": "383910b1698758a198b86037c63a111c8edc32ad",
+    "task_id": "law_trainee_task_016",
+    "url": "https://github.com/Simplified-Reasoning/Pi-Bench/tree/383910b1698758a198b86037c63a111c8edc32ad/data/law_trainee"
+  },
+  "summary": "Reconcile an MSA, customer DPA, architecture note, and sales promise before a private pilot agreement resolves the launch path.",
+  "task_id": "jbv1_saas_contract",
+  "title": "SaaS launch contract issue review"
+}

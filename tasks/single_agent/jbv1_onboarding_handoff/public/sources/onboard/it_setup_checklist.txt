@@ -1,0 +1,9 @@
+IT Setup Checklist — Day 1
+
+[ ] Pick up laptop from IT (14th floor)
+[ ] Sign into Okta with temporary password — set MFA
+[ ] Install 1Password, Slack, Zoom, VS Code
+[ ] Clone monorepo: git clone git@github.com:brightwater/monorepo
+[ ] Run bootstrap script: ./scripts/dev-setup.sh
+[ ] Request access: VPN, Datadog, PagerDuty, AWS read-only
+[ ] Post in #new-hires channel
