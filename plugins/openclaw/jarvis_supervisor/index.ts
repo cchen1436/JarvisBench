@@ -7,7 +7,7 @@ import { classifyReadOnlyExec } from "./read_only_exec.ts";
 type JsonRecord = Record<string, unknown>;
 
 export const PLUGIN_ID = "jarvisbench-mas-supervisor";
-export const PLUGIN_VERSION = "0.1.0-rc.1";
+export const PLUGIN_VERSION = "0.1.0-rc.2";
 export const CONTROL_PROTOCOL_VERSION = "1.0-release";
 
 const PROJECT_ID = String(process.env.JARVIS_MAS_PROJECT_ID || "");

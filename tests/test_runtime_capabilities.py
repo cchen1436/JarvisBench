@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import re
 from pathlib import Path
 
@@ -10,6 +11,8 @@ from scripts.compare_capabilities import REQUIRED_EXACT
 ROOT = Path(__file__).resolve().parents[1]
 LOCK_PATH = ROOT / "runtime" / "docker" / "python-requirements.lock"
 DOCKERFILE_PATH = ROOT / "runtime" / "docker" / "Dockerfile"
+NPM_PACKAGE_PATH = ROOT / "runtime" / "npm" / "package.json"
+NPM_LOCK_PATH = ROOT / "runtime" / "npm" / "package-lock.json"
 VALIDATOR_PATH = ROOT / "runtime" / "docker" / "validate_runtime.py"
 
 EXPECTED_DOCUMENT_DISTRIBUTIONS = {
@@ -60,6 +63,22 @@ def test_dockerfile_installs_reproducible_document_runtime() -> None:
     assert "--require-hashes" in text
     assert "--only-binary=:all:" in text
     assert "/opt/jarvisbench-runtime/python-requirements.lock" in text
+
+
+def test_openclaw_security_refresh_is_exactly_pinned() -> None:
+    package = json.loads(NPM_PACKAGE_PATH.read_text(encoding="utf-8"))
+    lock = json.loads(NPM_LOCK_PATH.read_text(encoding="utf-8"))
+    packages = lock["packages"]
+
+    assert package["dependencies"] == {"openclaw": "2026.6.34"}
+    assert packages[""]["dependencies"] == package["dependencies"]
+    assert packages["node_modules/openclaw"]["version"] == "2026.6.34"
+    assert packages["node_modules/openclaw/node_modules/tar"]["version"] == "7.5.20"
+    assert not any("baileys" in path.lower() for path in packages)
+
+    dockerfile = DOCKERFILE_PATH.read_text(encoding="utf-8")
+    assert "node:22.22.3-bookworm-slim" in dockerfile
+    assert "sha256:e21fc383b50d5347dc7a9f1cae45b8f4e2f0d39f7ade28e4eef7d2934522b752" in dockerfile
 
 
 def test_runtime_contract_checks_document_capabilities() -> None:

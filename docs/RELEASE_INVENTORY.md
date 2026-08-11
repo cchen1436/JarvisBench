@@ -21,9 +21,9 @@ remain outside a participant release. It does not authorize redistribution.
   upstream path named `all_tasks_with_grading.json`. No grader content is in the
   local release tree, but retaining or replacing that URL requires an explicit
   task-boundary decision because changing it would change the task checksum.
-- Runtime dependency audit: **10 npm advisories (7 high, 3 critical), including
-  the locked Baileys message-spoofing advisory, block public release pending
-  removal, isolation, or a separately validated lock update**.
+- Runtime dependency audit: the OpenClaw `2026.6.34` lock reports **zero high
+  and zero critical advisories**. Six moderate and one low advisory remain
+  disclosed; CI fails closed if a high or critical finding appears.
 - Python packaging/runtime floor: aligned at Python 3.10 or newer; the audited
   Ubuntu 22.04 staging image uses Python 3.10.12.
 
@@ -150,8 +150,8 @@ and participant results are the only normal handoff to the sealed evaluator.
 ## Publication blockers and non-claims
 
 Before publication, the project must add an approved top-level license, finish
-per-task attribution review, resolve or formally isolate the high/critical npm
-findings, and rebuild and record the final signed OCI manifest digest.
+per-task attribution and binary-fixture review, and record a final signed OCI
+manifest digest.
 The current same-uid file mount protects against accidental persistence, not a
 malicious worker process that deliberately reads its mounted credential; a
 credential broker or stronger process/uid boundary is required if that is part

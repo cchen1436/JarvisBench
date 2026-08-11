@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
-FROM --platform=$TARGETPLATFORM node:22.22.1-bookworm-slim@sha256:4f77a690f2f8946ab16fe1e791a3ac0667ae1c3575c3e4d0d4589e9ed5bfaf3d AS node_runtime
+FROM --platform=$TARGETPLATFORM node:22.22.3-bookworm-slim@sha256:e21fc383b50d5347dc7a9f1cae45b8f4e2f0d39f7ade28e4eef7d2934522b752 AS node_runtime
 
 FROM --platform=$TARGETPLATFORM ubuntu:22.04@sha256:3b06811b2afd352be909dd088a004166d665dc76d38b13eada33522a9d915c6f AS runtime
 
 ARG TARGETPLATFORM
 ARG BUILD_DATE=""
 ARG VCS_REF=""
-ARG VERSION="0.1.0-rc.1"
+ARG VERSION="0.1.0-rc.2"
 ARG SOURCE_URL=""
 LABEL org.opencontainers.image.title="JarvisBench OpenClaw Runtime" \
       org.opencontainers.image.description="Pinned OpenClaw runtime for JarvisBench" \

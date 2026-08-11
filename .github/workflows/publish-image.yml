@@ -29,12 +29,13 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: "22.22.1"
+          node-version: "22.22.3"
       - name: Validate source, privacy, tasks, and control contracts
         run: |
           python -m pip install -e '.[test]'
           ./scripts/validate.sh
           node --test tests/typescript/*.test.ts
+          ./scripts/audit-runtime.sh
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
       - name: Resolve immutable image tags

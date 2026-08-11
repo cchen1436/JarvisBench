@@ -5,7 +5,7 @@ repo="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 platform="${JARVISBENCH_PLATFORM:-linux/amd64}"
 tag="${JARVISBENCH_IMAGE:-jarvisbench:dev}"
 docker_cli="${JARVISBENCH_DOCKER_CLI:-docker}"
-version="${JARVISBENCH_VERSION:-0.1.0-rc.1}"
+version="${JARVISBENCH_VERSION:-0.1.0-rc.2}"
 source_url="${JARVISBENCH_SOURCE_URL:-}"
 vcs_ref="${JARVISBENCH_VCS_REF:-$(git -C "$repo" rev-parse HEAD 2>/dev/null || true)}"
 if [ -n "${JARVISBENCH_BUILD_DATE:-}" ]; then

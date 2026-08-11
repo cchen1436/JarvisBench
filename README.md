@@ -8,8 +8,8 @@ benchmark.
 
 > **Release status:** this is an engineering staging tree, not a publishable
 > release. It has no top-level public `LICENSE`, per-task attribution still
-> requires final review, the pinned OpenClaw graph has unresolved critical npm
-> advisories, and same-UID worker/secret isolation remains a documented privacy
+> requires final review, binary task fixtures still require a final metadata/PII
+> audit, and same-UID worker/secret isolation remains a documented privacy
 > limitation. Authorized representative single- and multi-agent reference
 > canaries passed before the final native OpenClaw/official OpenAI API migration;
 > the migrated path is covered by no-model contract and container smokes, not a
@@ -103,10 +103,10 @@ task tree:
 ```sh
 docker login ghcr.io
 docker pull --platform linux/amd64 \
-  ghcr.io/cchen1436/jarvisbench-openclaw:0.1.0-rc.1
+  ghcr.io/cchen1436/jarvisbench-openclaw:0.1.0-rc.2
 docker run --rm --platform linux/amd64 \
   --mount "type=bind,src=$(pwd)/tasks,dst=/opt/jarvisbench/tasks,readonly" \
-  ghcr.io/cchen1436/jarvisbench-openclaw:0.1.0-rc.1 validate-runtime
+  ghcr.io/cchen1436/jarvisbench-openclaw:0.1.0-rc.2 validate-runtime
 ```
 
 No `latest` tag is issued for this staging runtime.

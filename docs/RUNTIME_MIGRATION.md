@@ -19,9 +19,10 @@ private archive paths and the archives themselves remain outside this repository
 | Bootstrap capability manifest | `19d3c8cfa1b5744b009dbbce39e3bcc726d6aaa727543d5d740a6a82f3dc791f` | private migration evidence |
 | Formal-staging capability manifest | `50f07ec0c7b15ef95c26c9fe7c1b9216af580ace83d38b2268dfbfa4c30cb2e7` | private migration evidence |
 | Audited staging OCI manifest list | `sha256:5378c1a797b008fd3557a11e4e9e197cb246b59a019656cc7841f499a4ebbfbf` | local `linux/amd64` staging build, not the final release |
-| Post-remediation OCI index | `sha256:54ee0f3c2c0a60003c344e206e164c9f5521128d8771f06db2fda23b7d394249` | current local `jarvisbench:release-candidate`, not published |
-| Post-remediation `linux/amd64` manifest | `sha256:848d15e6a34f8497d66668f4800ce79ef648357965277f9d07f4537ae746f236` | platform manifest for the current local candidate |
-| Post-remediation image config | `sha256:1a534c9a7c1faa455859ffa99b0fe81975382b3e031104340e81fb8863e2e5f7` | image configuration for the current local candidate |
+| Post-remediation OCI index | `sha256:54ee0f3c2c0a60003c344e206e164c9f5521128d8771f06db2fda23b7d394249` | historical local candidate before the OpenClaw security refresh; not published |
+| Post-remediation `linux/amd64` manifest | `sha256:848d15e6a34f8497d66668f4800ce79ef648357965277f9d07f4537ae746f236` | historical platform manifest; not evidence for the refreshed runtime |
+| Post-remediation image config | `sha256:1a534c9a7c1faa455859ffa99b0fe81975382b3e031104340e81fb8863e2e5f7` | historical image configuration; not evidence for the refreshed runtime |
+| OpenClaw 2026.6.34 worktree validation OCI index | `sha256:bbba64ac3319777a4e2cf8127a1b1df96eb7a454565f603d3cd814e0ca510bec` | local `linux/amd64` validation build; not a registry or source-freeze identity |
 | Final public-release OCI manifest | not issued | rebuild and record only after source freeze and blocker closure |
 
 The bootstrap export contains 239,988 members and was created in node-local
@@ -48,19 +49,22 @@ are intentionally populated only by the Dockerfile image. The audited staging
 digest predates final source freeze, so it must not be relabeled as the final
 release digest.
 
-The current post-remediation candidate was built from the pinned public inputs
+The refreshed worktree candidate was built from the pinned public inputs
 with:
 
 ```sh
-JARVISBENCH_IMAGE=jarvisbench:release-candidate \
+JARVISBENCH_IMAGE=jarvisbench:critical-free-rc2 \
 JARVISBENCH_PLATFORM=linux/amd64 \
   ./scripts/build-image.sh
 ```
 
 Its complete offline container smoke passed, including all four topology/track
 dry runs, TypeScript supervisor contracts, task/checksum/privacy validation,
-and the repeatable no-network native-provider Gateway scan. It remains an
-unsigned, local release candidate rather than a public release artifact.
+and the repeatable no-network native-provider Gateway scan. An audit inside the
+exact image reports zero high and zero critical npm advisories. It remains an
+unsigned, local validation build rather than a public release artifact; the
+registry digest must be taken from the registry after the source revision is
+frozen, rather than copied from this worktree build.
 
 ## Migration sequence
 
@@ -145,9 +149,10 @@ explicit residual supply-chain risk; replacing it requires a separately pinned
 and verified CA source, not an unreviewed convenience image. `Check-Valid-Until`
 is disabled only because an immutable historical snapshot naturally expires.
 
-Node 22.22.1 and OpenClaw 2026.3.11 are a pinned, representative-canary-tested
-pair for this staging image, not a promise that arbitrary Node/OpenClaw upgrades
-are compatible. Native
+Node 22.22.3 and OpenClaw 2026.6.34 are the pinned release-candidate pair. This
+security refresh is covered by the full deterministic contract suite and native
+Gateway container smoke; it is not a new model-backed score or trajectory parity
+claim. Arbitrary Node/OpenClaw upgrades are not assumed compatible. Native
 Gateway children depend on the exact delegation -> child completion -> same
 Parent integration protocol. A new OpenClaw version can change session files,
 Gateway flags, plugin loading, model configuration, or completion notices even
@@ -155,12 +160,9 @@ when `openclaw --version` succeeds. Upgrade only by changing the lock, rebuildin
 the image, running no-model contract tests, and repeating the one representative
 Gateway canary.
 
-The current locked graph also emits an engine warning: `osc-progress@0.3.2`
-declares Node 24 or newer while this image intentionally uses Node 22. The
-package installs because npm treats the declaration as a warning, and the
-no-model version/Gateway-help checks and representative Gateway canaries pass,
-but that is not proof that every optional OpenClaw path is compatible. This
-mismatch must remain visible until the pinned pair is replaced deliberately.
+Node 22.22.3 satisfies the engines declared by OpenClaw and the installed
+transitive graph. The release build treats any engine mismatch as a defect to
+investigate, not a warning to suppress.
 
 The participant image embeds the expected task checksum/provenance contracts,
 but not the public task bundle. Validation and episodes mount `tasks/` read-only
@@ -187,10 +189,17 @@ risks. Never "fix" an audit by unpinning dependencies or changing frozen task
 content. Evaluator-only and requester-private material must remain outside both
 the build context and the public image.
 
-The 2026-08-10 build reported 10 npm advisories (7 high, 3 critical). It also
-identified locked `@whiskeysockets/baileys@7.0.0-rc.9` as affected by the public
-message-spoofing advisory `GHSA-qvv5-jq5g-4cgg`. JarvisBench does not need the
-WhatsApp channel for benchmark execution, but the vulnerable package is still
-present in the generic OpenClaw distribution. This is a public-release blocker
-until reachability is documented and the dependency is removed, isolated, or
-updated through a separately validated OpenClaw lock revision.
+The 2026-08-10 security refresh removed the vulnerable
+`@whiskeysockets/baileys@7.0.0-rc.9` graph and upgraded OpenClaw to `2026.6.34`.
+The regenerated production lock reports zero critical and zero high advisories;
+six moderate and one low advisory remain. `scripts/audit-runtime.sh` makes high
+or critical findings a CI and image-publication failure. The remaining findings
+must still be reviewed rather than hidden or auto-fixed by unpinning the graph.
+
+`npm ci --omit=dev --ignore-scripts` succeeds on Node 22.22.3, but
+`npm ls --all` reports three range inconsistencies inside OpenClaw's upstream
+shrinkwrap: `tar@7.5.20` versus an exact `7.5.13` request,
+`@types/retry@0.12.5` versus an exact `0.12.0` request, and `fast-uri@4.1.2`
+versus a `^3.0.1` request. Those forced versions do not introduce a high or
+critical audit finding and the complete container smoke passes, but the release
+does not claim that the upstream npm tree is range-clean.

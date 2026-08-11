@@ -116,10 +116,10 @@ authentication. The repository still supplies the public task mount:
 ```sh
 docker login ghcr.io
 docker pull --platform linux/amd64 \
-  ghcr.io/cchen1436/jarvisbench-openclaw:0.1.0-rc.1
+  ghcr.io/cchen1436/jarvisbench-openclaw:0.1.0-rc.2
 docker run --rm --platform linux/amd64 \
   --mount "type=bind,src=$(pwd)/tasks,dst=/opt/jarvisbench/tasks,readonly" \
-  ghcr.io/cchen1436/jarvisbench-openclaw:0.1.0-rc.1 validate-runtime
+  ghcr.io/cchen1436/jarvisbench-openclaw:0.1.0-rc.2 validate-runtime
 ```
 
 This RC has no `latest` tag and is not a public redistribution grant.
