@@ -2,10 +2,16 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
-from jarvisbench.core.providers import OpenAICompatibleProvider, read_secret, resolve_secret_file
+from jarvisbench.core.providers import (
+    Message,
+    OpenAIProvider,
+    read_secret,
+    resolve_secret_file,
+)
 from jarvisbench.settings.multi_agent_runtime import MultiAgentRuntime, MultiAgentRuntimeConfig
 
 
@@ -38,10 +44,64 @@ def test_provider_accepts_bounded_mounted_secret_file(
     secret = tmp_path / "provider-key"
     secret.write_text("private-value\n", encoding="utf-8")
     secret.chmod(0o400)
-    monkeypatch.delenv("JARVISBENCH_API_KEY", raising=False)
-    monkeypatch.setenv("JARVISBENCH_API_KEY_FILE", str(secret))
-    provider = OpenAICompatibleProvider(base_url="https://provider.invalid/v1")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.setenv("OPENAI_API_KEY_FILE", str(secret))
+    provider = OpenAIProvider(client=SimpleNamespace())
     assert provider.api_key == "private-value"
+
+
+def test_provider_uses_official_responses_stream_without_storage() -> None:
+    calls: list[dict[str, object]] = []
+
+    class Responses:
+        def create(self, **kwargs):
+            calls.append(kwargs)
+            return iter(
+                (
+                    SimpleNamespace(type="response.created"),
+                    SimpleNamespace(type="response.output_text.delta", delta="yes"),
+                    SimpleNamespace(type="response.completed"),
+                )
+            )
+
+    client = SimpleNamespace(responses=Responses())
+    fake_key = "private-value"
+    provider = OpenAIProvider(api_key=fake_key, client=client)
+    completion = provider.complete(
+        (Message("system", "rules"), Message("user", "question")),
+        model="gpt-5.6-sol",
+        reasoning="medium",
+    )
+    assert completion.text == "yes"
+    assert completion.first_token_ms is not None
+    assert calls == [
+        {
+            "model": "gpt-5.6-sol",
+            "input": [
+                {"role": "system", "content": "rules"},
+                {"role": "user", "content": "question"},
+            ],
+            "stream": True,
+            "store": False,
+            "reasoning": {"effort": "medium"},
+        }
+    ]
+
+
+def test_provider_error_does_not_chain_provider_response_body() -> None:
+    class Responses:
+        def create(self, **kwargs):
+            raise RuntimeError("provider echoed requester-private material")
+
+    fake_key = "private-value"
+    provider = OpenAIProvider(
+        api_key=fake_key,
+        client=SimpleNamespace(responses=Responses()),
+    )
+    with pytest.raises(RuntimeError, match=r"OpenAI API request failed \(RuntimeError\)") as exc:
+        provider.complete((Message("user", "private request"),), model="gpt-5.6-sol")
+    assert exc.value.__cause__ is None
+    assert exc.value.__suppress_context__ is True
 
 
 def test_secret_file_rejects_symlink(tmp_path: Path):
@@ -86,30 +146,21 @@ def test_runtime_reads_worker_secret_file_without_environment_value(
     secret = tmp_path / "worker-key"
     secret.write_text("worker-private-value\n", encoding="utf-8")
     secret.chmod(0o400)
-    monkeypatch.delenv("JARVISBENCH_WORKER_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     runtime = MultiAgentRuntime(
         MultiAgentRuntimeConfig(
             task_dir=_task(tmp_path),
             episode_root=tmp_path / "episode",
-            worker_model="provider/model",
-            provider_base_url="https://provider.invalid/v1",
+            worker_model="anthropic/claude-opus-test",
             api_key_file=secret,
         )
     )
     runtime.openclaw_home.mkdir(parents=True)
     runtime._write_openclaw_config()
-    value = json.loads((runtime.openclaw_home / "openclaw.json").read_text())
-    assert value["models"]["providers"]["provider"]["apiKey"] == {
-        "source": "file",
-        "provider": "jarvisbench_worker",
-        "id": "value",
-    }
-    assert value["secrets"]["providers"]["jarvisbench_worker"] == {
-        "source": "file",
-        "path": str(secret.resolve()),
-        "mode": "singleValue",
-    }
-    assert "worker-private-value" not in (runtime.openclaw_home / "openclaw.json").read_text()
+    raw = (runtime.openclaw_home / "openclaw.json").read_text()
+    assert json.loads(raw) == {}
+    assert "worker-private-value" not in raw
+    assert runtime._environment()["ANTHROPIC_API_KEY"] == "worker-private-value"
 
 
 def test_runtime_uses_env_secret_ref_without_persisting_value(
@@ -120,22 +171,13 @@ def test_runtime_uses_env_secret_ref_without_persisting_value(
         MultiAgentRuntimeConfig(
             task_dir=_task(tmp_path),
             episode_root=tmp_path / "episode",
-            worker_model="provider/model",
-            provider_base_url="https://provider.invalid/v1",
+            worker_model="anthropic/claude-opus-test",
             api_key_env="PRIVATE_WORKER_KEY",
         )
     )
     runtime.openclaw_home.mkdir(parents=True)
     runtime._write_openclaw_config()
     raw = (runtime.openclaw_home / "openclaw.json").read_text()
-    value = json.loads(raw)
-    assert value["models"]["providers"]["provider"]["apiKey"] == {
-        "source": "env",
-        "provider": "jarvisbench_worker",
-        "id": "PRIVATE_WORKER_KEY",
-    }
-    assert value["secrets"]["providers"]["jarvisbench_worker"] == {
-        "source": "env",
-        "allowlist": ["PRIVATE_WORKER_KEY"],
-    }
+    assert json.loads(raw) == {}
     assert "worker-private-value" not in raw
+    assert runtime._environment()["PRIVATE_WORKER_KEY"] == "worker-private-value"

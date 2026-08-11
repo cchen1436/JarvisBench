@@ -17,7 +17,7 @@ from typing import Any, Callable, Mapping
 
 from jarvisbench.core.contracts import BoundaryCandidate
 from jarvisbench.core.decision_ledger import DecisionLedger
-from jarvisbench.core.providers import read_secret, resolve_secret_file
+from jarvisbench.core.providers import read_secret
 from jarvisbench.reference.dynamic_mas.contracts import canonical_json
 from jarvisbench.reference.single_agent.control import SingleAgentControlService
 
@@ -63,8 +63,7 @@ def _is_plugin_dir(path: Path) -> bool:
 @dataclass(frozen=True)
 class OpenClawSingleAgentConfig:
     worker_model: str
-    provider_base_url: str
-    api_key_env: str = "JARVISBENCH_WORKER_API_KEY"
+    api_key_env: str = "ANTHROPIC_API_KEY"
     api_key_file: Path | None = None
     thinking: str = "provider_default"
     openclaw_executable: str = "openclaw"
@@ -79,8 +78,6 @@ class OpenClawSingleAgentConfig:
     def __post_init__(self) -> None:
         if "/" not in self.worker_model:
             raise ValueError("worker_model must use provider/model-id syntax")
-        if not self.provider_base_url:
-            raise ValueError("provider_base_url is required")
         if not self.api_key_env or "=" in self.api_key_env:
             raise ValueError("api_key_env must name one environment variable")
         if self.thinking not in {"provider_default", "off", "low", "medium", "high"}:
@@ -168,49 +165,11 @@ class OpenClawSingleAgentWorker:
             shutil.copytree(self.plugin_dir, extension)
         self._write_openclaw_config(controlled=request.prompt_kind is PromptKind.CONTROLLED)
 
-    def _secret_config(self) -> tuple[dict[str, str], dict[str, Any]]:
-        provider = "jarvisbench_worker"
-        if os.environ.get(self.config.api_key_env, ""):
-            return (
-                {
-                    "source": "env",
-                    "provider": provider,
-                    "id": self.config.api_key_env,
-                },
-                {"source": "env", "allowlist": [self.config.api_key_env]},
-            )
-        source = resolve_secret_file(
-            file_env="JARVISBENCH_WORKER_API_KEY_FILE",
-            explicit_file=self.config.api_key_file,
-        )
-        if source is None:
-            raise ValueError(
-                f"{self.config.api_key_env} or a worker credential file is required"
-            )
-        return (
-            {"source": "file", "provider": provider, "id": "value"},
-            {"source": "file", "path": str(source), "mode": "singleValue"},
-        )
-
     def _write_openclaw_config(self, *, controlled: bool) -> None:
-        provider, model_id = self.config.worker_model.split("/", 1)
-        secret_ref, secret_provider = self._secret_config()
-        model: dict[str, Any] = {"id": model_id, "name": model_id, "input": ["text", "image"]}
-        if self.config.thinking not in {"provider_default", "off"}:
-            model.update({"reasoning": True, "compat": {"supportsReasoningEffort": True}})
-        value: dict[str, Any] = {
-            "secrets": {"providers": {"jarvisbench_worker": secret_provider}},
-            "models": {
-                "providers": {
-                    provider: {
-                        "baseUrl": self.config.provider_base_url,
-                        "apiKey": secret_ref,
-                        "api": "openai-completions",
-                        "models": [model],
-                    }
-                }
-            },
-        }
+        # OpenClaw owns provider selection and request formatting. JarvisBench
+        # configures only its supervisor plugin; it never synthesizes a custom
+        # OpenAI-compatible provider catalog.
+        value: dict[str, Any] = {}
         if controlled:
             value["plugins"] = {
                 "enabled": True,
@@ -229,8 +188,19 @@ class OpenClawSingleAgentWorker:
     def _environment(self, *, project_id: str, controlled: bool) -> dict[str, str]:
         allowed = _WORKER_ENV_ALLOWLIST.union(self.config.environment_passthrough)
         env = {name: value for name, value in os.environ.items() if name in allowed}
-        if self.config.api_key_env in os.environ:
-            env[self.config.api_key_env] = os.environ[self.config.api_key_env]
+        worker_secret = read_secret(
+            value_env=self.config.api_key_env,
+            file_env="JARVISBENCH_WORKER_API_KEY_FILE",
+            explicit_file=self.config.api_key_file,
+        )
+        if not worker_secret:
+            raise ValueError(
+                f"{self.config.api_key_env} or a worker credential file is required"
+            )
+        # This is the vendor-native environment contract OpenClaw expects. The
+        # value is present only in child process memory and is never written to
+        # openclaw.json, manifests, events, or diagnostics.
+        env[self.config.api_key_env] = worker_secret
         env.update(
             {
                 "HOME": str(self.home),
@@ -249,6 +219,7 @@ class OpenClawSingleAgentWorker:
                 "JARVIS_MAS_PLUGIN_READY_JSON": str(self.plugin_ready_path),
                 "JARVIS_MAS_DYNAMIC_REQUIRED": "1" if controlled else "0",
                 "JARVIS_WORKSPACE_ROOT": str(self.workspace),
+                "JARVIS_FINAL_RECORD_PATH": str(self.workspace / "results" / "final.json"),
                 "JARVIS_AUTONOMOUS_REVIEW": "1" if controlled else "0",
                 "JARVIS_REVIEW_TIMEOUT_MS": str(self.config.review_timeout_ms),
                 "JARVIS_REVIEW_POLL_MS": "100",
@@ -350,6 +321,31 @@ class OpenClawSingleAgentWorker:
                 exported.append(relative)
         return tuple(sorted(exported))
 
+    def _export_evaluation_evidence(self, export_root: Path) -> None:
+        """Preserve deterministic app actions at the frozen grader location.
+
+        ``jb`` records mock side effects outside ``results/`` so they cannot be
+        mistaken for requester-facing deliverables.  The frozen evaluator reads
+        that audit stream from the root of the submitted artifact bundle,
+        alongside (not inside) ``results/``.
+        """
+
+        audit_root = self.workspace / ".jarvisbench"
+        for name in ("action_log.jsonl", "questions.jsonl"):
+            source = audit_root / name
+            if not source.exists():
+                continue
+            if source.is_symlink() or not source.is_file():
+                raise RuntimeError(f"worker {name} is not a safe regular file")
+            target = export_root / name
+            if name == "questions.jsonl" and target.is_file():
+                # The controller may already have logged a committed requester
+                # turn. Preserve both that turn and any explicit worker `jb ask`.
+                with source.open("rb") as input_stream, target.open("ab") as output_stream:
+                    shutil.copyfileobj(input_stream, output_stream)
+            else:
+                shutil.copy2(source, target)
+
     @staticmethod
     def _copy_tree_private(source: Path, destination: Path) -> None:
         if not source.exists():
@@ -364,10 +360,10 @@ class OpenClawSingleAgentWorker:
     def _archive_private_runtime(self, episode_root: Path) -> None:
         """Persist raw diagnostics privately without exporting OpenClaw config.
 
-        The config is intentionally omitted because a file-backed SecretRef can
-        reveal the host credential *path*. Secret values are never serialized;
-        an exact in-memory scan also prevents a provider/runtime from echoing a
-        credential into logs or transcripts before archival.
+        The config is intentionally omitted even though the native-provider
+        version contains no credential path or value. Secret values are never
+        serialized; an exact in-memory scan also prevents a provider/runtime
+        from echoing a credential into logs or transcripts before archival.
         """
 
         destination = episode_root / "private" / "runtime"
@@ -443,6 +439,11 @@ class OpenClawSingleAgentWorker:
                         / "decision_ledger.jsonl"
                     ),
                     review=review,
+                    on_attention_committed=getattr(
+                        review, "on_attention_committed", None
+                    ),
+                    task_brief=request.task_brief,
+                    required_result_paths=request.required_result_paths,
                     poll_seconds=self.config.poll_seconds,
                 )
                 service.start()
@@ -517,6 +518,7 @@ class OpenClawSingleAgentWorker:
                 )
 
         exported = self._export(request)
+        self._export_evaluation_evidence(request.layout.export_root)
         self._archive_private_runtime(request.layout.episode_root)
         if self.events_path.is_file():
             shutil.copy2(

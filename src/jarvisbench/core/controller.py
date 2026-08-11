@@ -12,12 +12,18 @@ class AttentionDecision:
     reason: str
     question: str | None = None
     scope: str = "worker"
+    reason_code: str = ""
+    confidence: float = 0.0
+    evidence_source: str = ""
+    evidence_quote: str = ""
 
     def __post_init__(self) -> None:
         if self.request_attention and not self.question:
             raise ValueError("an attention request requires a question")
         if self.scope not in {"worker", "project", "portfolio"}:
             raise ValueError("invalid decision scope")
+        if not 0.0 <= self.confidence <= 1.0:
+            raise ValueError("attention confidence must be between zero and one")
 
 
 class AttentionController(Protocol):
@@ -32,4 +38,3 @@ class NoController:
 
     def decide(self, candidate: BoundaryCandidate) -> AttentionDecision:
         return AttentionDecision(False, "baseline controller disabled")
-

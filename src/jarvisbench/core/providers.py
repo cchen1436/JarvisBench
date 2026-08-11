@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-import json
 import os
 import stat
 import time
-import urllib.error
-import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Protocol
+from typing import Any, Iterable, Protocol
+
+
+OPENAI_API_BASE = "https://api.openai.com/v1"
 
 
 @dataclass(frozen=True)
@@ -74,63 +74,79 @@ def read_secret(
     return value
 
 
-class OpenAICompatibleProvider:
-    """Small provider-neutral adapter with no endpoint or credential defaults."""
+class OpenAIProvider:
+    """Official OpenAI Responses API adapter for the reference controller.
+
+    The endpoint is deliberately fixed to OpenAI's public API. Worker models
+    are invoked independently by OpenClaw and never pass through this client.
+    """
 
     def __init__(
         self,
-        base_url: str | None = None,
         api_key: str | None = None,
         api_key_file: str | Path | None = None,
         timeout: float = 180.0,
+        client: Any | None = None,
     ):
-        self.base_url = (base_url or os.environ.get("JARVISBENCH_API_BASE", "")).rstrip("/")
         self.api_key = read_secret(
-            value_env="JARVISBENCH_API_KEY",
-            file_env="JARVISBENCH_API_KEY_FILE",
+            value_env="OPENAI_API_KEY",
+            file_env="OPENAI_API_KEY_FILE",
             explicit_value=api_key,
             explicit_file=api_key_file,
         )
         self.timeout = timeout
-        if not self.base_url or not self.api_key:
-            raise ValueError(
-                "JARVISBENCH_API_BASE and a JARVISBENCH_API_KEY value or file are required"
+        if not self.api_key:
+            raise ValueError("OPENAI_API_KEY or OPENAI_API_KEY_FILE is required")
+        if client is None:
+            # Import lazily so no-model validation never initializes a model
+            # client or consults provider configuration.
+            from openai import OpenAI
+
+            client = OpenAI(
+                api_key=self.api_key,
+                base_url=OPENAI_API_BASE,
+                timeout=self.timeout,
             )
+        self.client = client
 
     def complete(self, messages: Iterable[Message], *, model: str, reasoning: str | None = None) -> Completion:
-        payload: dict[str, object] = {
+        payload: dict[str, Any] = {
             "model": model,
-            "messages": [{"role": m.role, "content": m.content} for m in messages],
+            "input": [{"role": m.role, "content": m.content} for m in messages],
             "stream": True,
+            # Jarvis and Luna prompts may contain requester-private context.
+            # The benchmark is stateless across calls, so server-side storage
+            # is unnecessary.
+            "store": False,
         }
         if reasoning:
-            payload["reasoning_effort"] = reasoning
-        request = urllib.request.Request(
-            f"{self.base_url}/chat/completions",
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
-            method="POST",
-        )
+            payload["reasoning"] = {
+                "effort": "none" if reasoning == "off" else reasoning
+            }
         start = time.perf_counter()
         first: float | None = None
         chunks: list[str] = []
         try:
-            with urllib.request.urlopen(request, timeout=self.timeout) as response:
-                for raw in response:
-                    line = raw.decode("utf-8", errors="replace").strip()
-                    if not line.startswith("data:"):
+            stream = self.client.responses.create(**payload)
+            try:
+                for event in stream:
+                    if getattr(event, "type", "") != "response.output_text.delta":
                         continue
-                    body = line[5:].strip()
-                    if body == "[DONE]":
-                        break
-                    data = json.loads(body)
-                    text = data.get("choices", [{}])[0].get("delta", {}).get("content") or ""
-                    if text:
-                        if first is None:
-                            first = (time.perf_counter() - start) * 1_000
-                        chunks.append(text)
-        except urllib.error.HTTPError as exc:
-            # Do not include response bodies: providers sometimes echo request data.
-            raise RuntimeError(f"provider HTTP error {exc.code}") from exc
+                    text = getattr(event, "delta", "") or ""
+                    if not isinstance(text, str) or not text:
+                        continue
+                    if first is None:
+                        first = (time.perf_counter() - start) * 1_000
+                    chunks.append(text)
+            finally:
+                close = getattr(stream, "close", None)
+                if callable(close):
+                    close()
+        except Exception as exc:
+            # Do not include provider exception bodies: they can echo request
+            # data. Preserve only a bounded status/type for diagnostics.
+            status = getattr(exc, "status_code", None)
+            detail = f"HTTP {status}" if isinstance(status, int) else type(exc).__name__
+            raise RuntimeError(f"OpenAI API request failed ({detail})") from None
         total = (time.perf_counter() - start) * 1_000
         return Completion("".join(chunks), first, total, model)

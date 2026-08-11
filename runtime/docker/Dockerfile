@@ -4,10 +4,21 @@ FROM --platform=$TARGETPLATFORM node:22.22.1-bookworm-slim@sha256:4f77a690f2f894
 FROM --platform=$TARGETPLATFORM ubuntu:22.04@sha256:3b06811b2afd352be909dd088a004166d665dc76d38b13eada33522a9d915c6f AS runtime
 
 ARG TARGETPLATFORM
+ARG BUILD_DATE=""
+ARG VCS_REF=""
+ARG VERSION="0.1.0-rc.1"
+ARG SOURCE_URL=""
+LABEL org.opencontainers.image.title="JarvisBench OpenClaw Runtime" \
+      org.opencontainers.image.description="Pinned OpenClaw runtime for JarvisBench" \
+      org.opencontainers.image.created="$BUILD_DATE" \
+      org.opencontainers.image.revision="$VCS_REF" \
+      org.opencontainers.image.version="$VERSION" \
+      org.opencontainers.image.source="$SOURCE_URL"
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/opt/jarvisbench/src:/opt/jarvisbench \
+    PATH=/opt/jarvisbench-runtime/venv/bin:$PATH \
     JARVISBENCH_ROOT=/opt/jarvisbench \
     JARVISBENCH_APT_SNAPSHOT=20260810T000000Z \
     OPENCLAW_HOME=/var/lib/jarvisbench \
@@ -18,6 +29,7 @@ COPY --from=node_runtime /usr/local/ /usr/local/
 COPY runtime/docker/ubuntu-snapshot.sources /etc/apt/sources.list.d/ubuntu.sources
 COPY runtime/docker/99snapshot /etc/apt/apt.conf.d/99snapshot
 COPY runtime/docker/98snapshot-bootstrap-tls /etc/apt/apt.conf.d/98snapshot-bootstrap-tls
+COPY runtime/docker/python-requirements.lock /opt/jarvisbench-runtime/python-requirements.lock
 RUN rm -f /etc/apt/sources.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \
@@ -25,7 +37,13 @@ RUN rm -f /etc/apt/sources.list \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
-       git pandoc python3 sqlite3 tini wkhtmltopdf \
+       git pandoc poppler-utils=22.02.0-2ubuntu0.13 python3 python3-venv=3.10.6-1~22.04.1 sqlite3 tini wkhtmltopdf \
+    && python3 -m venv /opt/jarvisbench-runtime/venv \
+    && /opt/jarvisbench-runtime/venv/bin/python -m pip install \
+       --no-cache-dir \
+       --require-hashes \
+       --only-binary=:all: \
+       --requirement /opt/jarvisbench-runtime/python-requirements.lock \
     && rm -rf /var/lib/apt/lists/*
 
 COPY runtime/npm/package.json runtime/npm/package-lock.json /opt/openclaw-runtime/

@@ -10,6 +10,17 @@ dist/
 build/
 results/
 runtime-state/
+runs/
+traces/
+sessions/
+logs/
+.openclaw/
+*.key
+*.pem
+*.p12
+*.pfx
+credentials.json
+auth-profiles.json
 *.tar
 *.tar.gz
 *.tar.zst

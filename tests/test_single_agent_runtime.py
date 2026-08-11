@@ -336,3 +336,204 @@ def test_single_attention_budget_zero_never_spends_attention(tmp_path: Path) -> 
     assert worker.bound is not None
     assert worker.bound.decision.request_attention is False
     assert result.attention_budget_used == 0
+
+
+def test_declared_intermediate_artifact_is_prefiltered_and_terminal_slot_is_reserved(
+    tmp_path: Path,
+) -> None:
+    class AlwaysAsk:
+        def __init__(self) -> None:
+            self.calls: list[str] = []
+
+        def decide(self, value: BoundaryCandidate) -> AttentionDecision:
+            self.calls.append(value.action_id)
+            return AttentionDecision(
+                True,
+                "requester-owned outcome choice",
+                f"Which outcome should govern {value.action_id}?",
+                "worker",
+            )
+
+    class IntermediateThenFinal:
+        def __init__(self) -> None:
+            self.reviews: list[ControllerReview] = []
+
+        def execute(self, request: SingleAgentWorkerRequest, review):
+            common = candidate(request.session_id)
+            declared = (
+                "results/final.json",
+                "results/recommendation.md",
+            )
+            intermediate = BoundaryCandidate(
+                session_id=common.session_id,
+                epoch=2,
+                nonce="a" * 48,
+                action_id="action-intermediate",
+                action_fingerprint="c" * 64,
+                reduced_update=common.reduced_update,
+                consequence="Write a reversible intermediate recommendation.",
+                artifact_paths=("results/recommendation.md",),
+                final_record_intent=False,
+                required_result_paths=declared,
+            )
+            terminal = BoundaryCandidate(
+                session_id=common.session_id,
+                epoch=2,
+                nonce="a" * 48,
+                action_id="action-terminal",
+                action_fingerprint="d" * 64,
+                reduced_update=common.reduced_update,
+                consequence="Commit the requester-facing decision record.",
+                artifact_paths=("results/final.json",),
+                final_record_intent=True,
+                required_result_paths=declared,
+            )
+            self.reviews.append(review(intermediate))
+            self.reviews.append(review(terminal))
+            return WorkerExecution("dry_run")
+
+    controller = AlwaysAsk()
+    worker = IntermediateThenFinal()
+    result = SingleAgentRunner(
+        worker,
+        ReferenceSingleAgentControllerAdapter(controller),
+        max_attention_requests=1,
+    ).run(
+        TASKS / "jbv1_batch_export",
+        tmp_path / "runs",
+        run_id="terminal-reserve",
+    )
+
+    # Deterministic prefiltering, rather than the LLM, releases declared local
+    # intermediate artifacts. The only provider call and attention slot remain
+    # available for the final requester-facing decision boundary.
+    assert controller.calls == ["action-terminal"]
+    assert [item.decision.request_attention for item in worker.reviews] == [
+        False,
+        True,
+    ]
+    assert "intermediate" in worker.reviews[0].decision.reason
+    assert result.candidate_count == 2
+    assert result.attention_request_count == 1
+    assert result.attention_budget_used == 1
+
+
+def test_terminal_reserve_never_suppresses_an_external_irreversible_boundary(
+    tmp_path: Path,
+) -> None:
+    class AlwaysAsk:
+        def decide(self, _value: BoundaryCandidate) -> AttentionDecision:
+            return AttentionDecision(
+                True,
+                "requester authorization is required for an external write",
+                "Do you authorize this external action?",
+                "worker",
+            )
+
+    class ExternalWorker:
+        bound: ControllerReview | None = None
+
+        def execute(self, request: SingleAgentWorkerRequest, review):
+            common = candidate(request.session_id)
+            external = BoundaryCandidate(
+                session_id=common.session_id,
+                epoch=common.epoch,
+                nonce=common.nonce,
+                action_id="action-external",
+                action_fingerprint="f" * 64,
+                reduced_update=common.reduced_update,
+                consequence="Publish the current result to an external service.",
+                required_result_paths=("results/final.json",),
+                external_irreversible_effect="http_write",
+            )
+            self.bound = review(external)
+            return WorkerExecution("dry_run")
+
+    worker = ExternalWorker()
+    result = SingleAgentRunner(
+        worker,
+        ReferenceSingleAgentControllerAdapter(AlwaysAsk()),
+        max_attention_requests=1,
+    ).run(
+        TASKS / "jbv1_batch_export",
+        tmp_path / "runs",
+        run_id="external-boundary",
+    )
+
+    assert worker.bound is not None
+    assert worker.bound.decision.request_attention is True
+    assert result.attention_budget_used == 1
+
+
+def test_terminal_attention_reserve_survives_a_nonprefiltered_early_ask(
+    tmp_path: Path,
+) -> None:
+    class AlwaysAsk:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def decide(self, value: BoundaryCandidate) -> AttentionDecision:
+            self.calls += 1
+            return AttentionDecision(
+                True,
+                "requester-owned outcome choice",
+                f"Which outcome should govern {value.action_id}?",
+                "worker",
+            )
+
+    class UnknownThenFinal:
+        def __init__(self) -> None:
+            self.reviews: list[ControllerReview] = []
+
+        def execute(self, request: SingleAgentWorkerRequest, review):
+            common = candidate(request.session_id)
+            required = ("results/final.json", "results/recommendation.md")
+            early = BoundaryCandidate(
+                session_id=common.session_id,
+                epoch=2,
+                nonce="a" * 48,
+                action_id="action-unlisted",
+                action_fingerprint="e" * 64,
+                reduced_update=common.reduced_update,
+                consequence="Write an unlisted, non-final local artifact.",
+                artifact_paths=("results/unlisted.txt",),
+                final_record_intent=False,
+                required_result_paths=required,
+            )
+            terminal = BoundaryCandidate(
+                session_id=common.session_id,
+                epoch=2,
+                nonce="a" * 48,
+                action_id="action-final",
+                action_fingerprint="f" * 64,
+                reduced_update=common.reduced_update,
+                consequence="Commit the final requester-facing decision.",
+                artifact_paths=("results/final.json",),
+                final_record_intent=True,
+                required_result_paths=required,
+            )
+            self.reviews.extend((review(early), review(terminal)))
+            return WorkerExecution("dry_run")
+
+    controller = AlwaysAsk()
+    worker = UnknownThenFinal()
+    result = SingleAgentRunner(
+        worker,
+        ReferenceSingleAgentControllerAdapter(controller),
+        max_attention_requests=1,
+    ).run(
+        TASKS / "jbv1_batch_export",
+        tmp_path / "runs",
+        run_id="terminal-reserve-nonprefiltered",
+    )
+
+    assert controller.calls == 2
+    assert [item.decision.request_attention for item in worker.reviews] == [
+        False,
+        True,
+    ]
+    assert "terminal requester-attention slot reserved" in (
+        worker.reviews[0].decision.reason
+    )
+    assert result.attention_request_count == 1
+    assert result.attention_budget_used == 1

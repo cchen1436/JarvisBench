@@ -11,9 +11,10 @@ benchmark.
 > requires final review, the pinned OpenClaw graph has unresolved critical npm
 > advisories, and same-UID worker/secret isolation remains a documented privacy
 > limitation. Authorized representative single- and multi-agent reference
-> canaries now pass the functional runtime, artifact, receipt, and sealed-grader
-> acceptance checks. They are not a full benchmark rerun or a score-parity
-> claim. Do not redistribute this tree until the remaining blockers are resolved.
+> canaries passed before the final native OpenClaw/official OpenAI API migration;
+> the migrated path is covered by no-model contract and container smokes, not a
+> new score claim. Do not redistribute this tree until the remaining blockers
+> are resolved.
 
 ## Two independent axes
 
@@ -41,8 +42,17 @@ Track 1/Track 2.
 
 - `none`: the first-class baseline. No Jarvis or user model is required.
 - `external`: a participant implements the small `AttentionController` protocol.
-- `reference`: the optional provider-neutral Jarvis implementation. Provider
-  URL, model IDs, and credentials must be configured explicitly at runtime.
+- `reference`: the optional Jarvis implementation. Jarvis and Luna use the
+  official OpenAI Python SDK and Responses API; worker calls remain inside
+  OpenClaw's native provider stack.
+
+The `TextProvider` protocol remains available to third-party controllers, but
+the bundled reference controller does not use an NVIDIA proxy or a custom
+OpenAI-compatible endpoint. Its defaults are `gpt-5.6-sol` for Jarvis and
+`gpt-5.6-luna` for Luna, authenticated only by `OPENAI_API_KEY` (or a mounted
+`OPENAI_API_KEY_FILE`). OpenClaw receives a native model ID such as
+`anthropic/claude-opus-4-8` and the matching vendor credential; JarvisBench does
+not generate a `models.providers` catalog.
 
 The same benchmark tasks and worker-visible contracts apply to all controller
 choices. Official grading is a separate, sealed evaluator operation.
@@ -86,6 +96,21 @@ To rerun only the hardened container smoke:
 ./scripts/container-smoke.sh jarvisbench:dev linux/amd64
 ```
 
+The private release-candidate runtime is published separately from the task
+repository. After authenticating to GHCR, it can be used with the checked-out
+task tree:
+
+```sh
+docker login ghcr.io
+docker pull --platform linux/amd64 \
+  ghcr.io/cchen1436/jarvisbench-openclaw:0.1.0-rc.1
+docker run --rm --platform linux/amd64 \
+  --mount "type=bind,src=$(pwd)/tasks,dst=/opt/jarvisbench/tasks,readonly" \
+  ghcr.io/cchen1436/jarvisbench-openclaw:0.1.0-rc.1 validate-runtime
+```
+
+No `latest` tag is issued for this staging runtime.
+
 Run the isolated deterministic Track 2 smoke:
 
 ```sh
@@ -121,9 +146,11 @@ tests/ and scripts/         no-model validation and release tooling
 ## Portability and privacy
 
 The executable release surface has no fixed cluster account, scheduler command,
-server filesystem path, runtime image archive path, provider endpoint, or API
-credential. Historical provider-qualified model IDs in public task baseline
-metadata identify the frozen measurement; they are not executable defaults.
+server filesystem path, runtime image archive path, worker endpoint, or API
+credential. The optional reference controller deliberately targets OpenAI's
+official public API. Historical provider-qualified model IDs in public task
+baseline metadata identify the frozen measurement; they are not executable
+defaults.
 
 Task assets are mounted read-only. Mutable workspace, OpenClaw, control, event,
 Gateway, and session state belongs to an episode-local Linux filesystem or Docker
@@ -135,4 +162,5 @@ Read [Architecture](docs/ARCHITECTURE.md),
 [Privacy](docs/PRIVACY.md), and the
 [Release inventory](docs/RELEASE_INVENTORY.md) before integrating a runtime.
 The private SQSH bootstrap and canonical OCI build boundary are documented in
-[Runtime migration](docs/RUNTIME_MIGRATION.md).
+[Runtime migration](docs/RUNTIME_MIGRATION.md). Known runtime risks and the
+reporting boundary are listed in [Security](SECURITY.md).

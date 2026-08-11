@@ -4,6 +4,17 @@
 __pycache__
 *.pyc
 results
+runs
+traces
+sessions
+logs
+.openclaw
+*.key
+*.pem
+*.p12
+*.pfx
+credentials.json
+auth-profiles.json
 tests
 docs
 tasks

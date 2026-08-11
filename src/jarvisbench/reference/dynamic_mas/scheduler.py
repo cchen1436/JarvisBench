@@ -115,6 +115,23 @@ class DynamicMasScheduler:
                 "consequence",
                 1_600,
             ),
+            artifact_paths=tuple(
+                sorted({path for action in review.actions for path in action.artifact_paths})
+            ),
+            final_record_intent=any(
+                action.final_record_intent for action in review.actions
+            ),
+            preview_truncated=any(action.params_truncated for action in review.actions),
+            review_id=review.review_id,
+            batch_id=review.batch_id,
+            external_irreversible_effect=next(
+                (
+                    action.external_irreversible_effect
+                    for action in review.actions
+                    if action.external_irreversible_effect
+                ),
+                "",
+            ),
         )
 
     def _allow(self, review: ReviewRequest, *, error: Exception | None = None) -> SchedulerOutcome:
@@ -130,6 +147,7 @@ class DynamicMasScheduler:
         self,
         *,
         review: ReviewRequest,
+        candidate: BoundaryCandidate,
         decision: AttentionDecision,
         answer: str,
     ) -> SchedulerOutcome:
@@ -163,7 +181,6 @@ class DynamicMasScheduler:
                 reversible=True,
             )
         )
-
         # The held action is always invalidated before guidance is exposed.
         invalidation = self.control_plane.interrupt(
             review,
@@ -182,6 +199,12 @@ class DynamicMasScheduler:
                 guidance_sha256=str(invalidation["guidance_sha256"]),
             )
         )
+        recorder = getattr(self.controller, "record_committed_question", None)
+        if callable(recorder):
+            try:
+                recorder(candidate, decision, guidance)
+            except Exception:
+                pass
 
         # Project scope reaches Parent integration as the narrow deterministic
         # cross-workstream route.  It is not broadcast to unrelated children.
@@ -329,6 +352,7 @@ class DynamicMasScheduler:
                 )
                 outcome = self._route_answer(
                     review=review,
+                    candidate=candidate,
                     decision=decision,
                     answer=answer,
                 )
@@ -532,6 +556,14 @@ class DynamicMasScheduler:
                         guidance_sha256=str(receipt["guidance_sha256"]),
                     )
                 )
+                recorder = getattr(
+                    self.controller, "record_committed_question", None
+                )
+                if callable(recorder):
+                    try:
+                        recorder(candidate, decision, guidance)
+                    except Exception:
+                        pass
                 self._attention_fingerprints.add(attention_fingerprint)
                 return SchedulerOutcome(
                     disposition="parent_gate_guidance",

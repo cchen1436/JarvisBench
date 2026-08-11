@@ -110,6 +110,20 @@ docker run --rm --platform linux/amd64 \
 On Apple Silicon, `--platform linux/amd64` uses emulation. This is expected for
 parity with the canonical server architecture.
 
+The private GHCR release candidate can replace the locally built image after
+authentication. The repository still supplies the public task mount:
+
+```sh
+docker login ghcr.io
+docker pull --platform linux/amd64 \
+  ghcr.io/cchen1436/jarvisbench-openclaw:0.1.0-rc.1
+docker run --rm --platform linux/amd64 \
+  --mount "type=bind,src=$(pwd)/tasks,dst=/opt/jarvisbench/tasks,readonly" \
+  ghcr.io/cchen1436/jarvisbench-openclaw:0.1.0-rc.1 validate-runtime
+```
+
+This RC has no `latest` tag and is not a public redistribution grant.
+
 ## 5. Choose a controller
 
 ### Baseline
@@ -145,13 +159,15 @@ still replace it through the same `SingleAgentWorkerPort` boundary.
 
 ### Reference controller
 
-The reference implementation uses the same controller boundary and has no
-provider or model default. Copy `.env.example` to an ignored local environment
-file and populate it only when performing an explicitly approved model-backed
-run. Never bake credentials into the image, task manifests, run manifests, or
-logs.
+The reference implementation uses the same controller boundary. Jarvis and
+Luna call OpenAI's official Responses API through the official Python SDK;
+OpenClaw calls the worker through its own native provider implementation. Copy
+`.env.example` to an ignored local environment file and populate it only when
+performing an explicitly approved model-backed run. Never bake credentials
+into the image, task manifests, run manifests, or logs.
 
-The executable command surface is provider-neutral. A launcher supplies an
+The controller interface is provider-neutral, while the bundled reference
+controller is intentionally OpenAI-specific. A launcher supplies an
 episode-local `/workspace` Docker volume, a read-only public task, an export
 root, and out-of-tree secret/requester files, then invokes this shape:
 
@@ -160,20 +176,24 @@ jarvisbench run \
   --setting single_agent --track agent_collaboration \
   --controller reference \
   --task-dir /tasks/<task-id> --episode-root /episode/runs \
-  --worker-model <provider/model> --provider-base-url <openai-compatible-url> \
-  --worker-api-key-file /run/provider/key \
-  --jarvis-model <provider/model> --jarvis-reasoning medium \
-  --user-model <provider/model> \
+  --worker-model anthropic/claude-opus-4-8 \
+  --worker-api-key-env ANTHROPIC_API_KEY \
+  --worker-api-key-file /run/provider/anthropic.key \
+  --jarvis-model gpt-5.6-sol --jarvis-reasoning medium \
+  --user-model gpt-5.6-luna \
   --requester-context /run/requester/profile.json
 ```
 
 Credentials are supplied only through ignored environment/file mounts; the
-public image has no endpoint, model, or key default. Authorized representative
-single- and multi-agent reference canaries completed with exact receipt closure,
-valid artifacts, and sealed-grader handoff. This does not validate the full
-suite. File-backed `SecretRef` prevents accidental credential persistence, but
-same-UID worker code can still deliberately read mounted files; use a broker or
-stronger process/UID boundary when that threat is in scope. See
+public image has no key. Authorized representative single- and multi-agent
+reference canaries completed before the final native OpenClaw/official OpenAI
+API migration. The migrated path has no-model contract and container coverage,
+not a new score or full-suite claim. The runner places a file-backed worker
+credential only in the vendor
+environment of the OpenClaw subprocess; it never writes the value or a custom
+provider catalog to `openclaw.json`. Same-UID worker code can still deliberately
+read process credentials or mounted files; use a broker or stronger process/UID
+boundary when that threat is in scope. See
 `docs/RUNTIME_MIGRATION.md` before enabling a provider.
 
 ## 6. Official evaluation boundary

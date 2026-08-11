@@ -11,9 +11,9 @@ remain outside a participant release. It does not authorize redistribution.
 - No-model tests, privacy scan, task checksum validation, and topology dry runs:
   available through `scripts/validate.sh`.
 - Model-backed end-to-end canary: representative single-agent and dynamic-MAS
-  reference episodes pass runtime, artifact, exact-receipt, secret-scan, and
-  sealed-grader acceptance. These are functional canaries, not a full-suite or
-  score-parity result.
+  reference episodes passed before the final native OpenClaw/official OpenAI
+  API migration. The migrated path is covered by no-model contract and
+  container smokes, not a fresh score or full-suite result.
 - Full benchmark rerun: intentionally not performed for release engineering.
 - Public license: **missing and blocking redistribution**.
 - Per-task attribution review: **not final and blocking redistribution**.
@@ -37,7 +37,8 @@ The public class contains:
 - task, event, replay, controller, and result-handoff schemas;
 - setting adapters for one-worker and Parent-plus-dynamic-children execution;
 - Track 1 live attention-control and Track 2 immutable text-replay contracts;
-- provider-neutral interfaces and the optional reference Jarvis/Luna code;
+- provider-neutral controller interfaces and the optional OpenAI-backed
+  reference Jarvis/Luna code;
 - the OpenClaw supervisor integration and deterministic control primitives;
 - the generic evaluator handoff harness, without sealed evaluation contents;
 - pinned Docker/runtime build inputs, validation scripts, examples, tests,
@@ -113,9 +114,10 @@ asset and replacing these descriptive labels with approved notices where needed.
 ## Portability and dependency audit
 
 The executable release surface contains no fixed server path, cluster account,
-scheduler invocation, SQSH dependency, provider endpoint, or credential. The
-Docker build uses pinned base-image digests and an npm lockfile; runtime provider
-and model choices are explicit configuration.
+scheduler invocation, SQSH dependency, worker endpoint, or credential. The
+optional reference Jarvis/Luna client intentionally targets OpenAI's official
+public API. The Docker build uses pinned base-image digests and an npm lockfile;
+worker model and native OpenClaw provider choices are explicit configuration.
 
 One intentional metadata exception needs precise wording: every public task
 records the provider-qualified model identity used for its frozen historical

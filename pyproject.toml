@@ -4,11 +4,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "jarvisbench"
-version = "0.1.0.dev0"
+version = "0.1.0rc1"
 description = "A benchmark for allocating scarce user attention during long-horizon agent work."
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = ["openai==2.48.0"]
 
 [project.optional-dependencies]
 test = ["hatchling==1.27.0", "pytest==8.3.5"]

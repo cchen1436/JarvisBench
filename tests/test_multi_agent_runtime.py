@@ -166,8 +166,7 @@ def test_prepare_keeps_episode_workspace_writable_with_read_only_public_assets(
         MultiAgentRuntimeConfig(
             task_dir=task,
             episode_root=tmp_path / "episode",
-            worker_model="provider/model",
-            provider_base_url="https://provider.invalid/v1",
+            worker_model="anthropic/claude-opus-test",
             api_key_env="FAKE_WORKER_KEY",
         )
     )
@@ -232,6 +231,7 @@ def test_openclaw_state_and_config_are_exactly_episode_local(
     monkeypatch.setenv("OPENCLAW_HOME", "/image-global/openclaw-home")
     monkeypatch.setenv("OPENCLAW_STATE_DIR", "/image-global/state")
     monkeypatch.setenv("OPENCLAW_CONFIG_PATH", "/image-global/openclaw.json")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "private-test-key")
     runtime_a = MultiAgentRuntime(
         MultiAgentRuntimeConfig(
             task_dir=_task(tmp_path),
@@ -679,8 +679,7 @@ raise SystemExit(2)
         MultiAgentRuntimeConfig(
             task_dir=task,
             episode_root=tmp_path / "episode",
-            worker_model="provider/model",
-            provider_base_url="https://provider.invalid/v1",
+            worker_model="anthropic/claude-opus-test",
             api_key_env="FAKE_WORKER_KEY",
             environment_passthrough=("FAKE_OPENCLAW_CALLS",),
             openclaw_executable=str(fake),

@@ -170,10 +170,41 @@ class LiveChildReducer:
             if review.session_id != session_id:
                 raise DynamicMasContractError("review event crossed session identity")
             state.last_review = review
-            summaries = [
-                f"{action.tool_name}: {action.params_preview}".strip()
-                for action in review.actions
-            ]
+            summaries = []
+            for action in review.actions:
+                boundary = (
+                    "final requester-facing result"
+                    if action.final_record_intent
+                    else "intermediate or non-final action"
+                )
+                preview_note = (
+                    "bounded head/tail preview; omitted text is not evidence of "
+                    "an incomplete worker payload"
+                    if action.params_truncated
+                    else "complete bounded preview"
+                )
+                artifacts = ", ".join(action.artifact_paths) or "none"
+                # Put the decision-bearing projection before the generic
+                # head/tail preview.  Both fields are independently bounded,
+                # but the complete action summary is bounded again below.  If
+                # the generic preview comes first, a long payload can evict the
+                # selected option, requester question, or authorization state
+                # that the controller actually needs to inspect.
+                fields = [
+                    f"tool={action.tool_name}",
+                    f"boundary={boundary}",
+                    f"artifacts={artifacts}",
+                    f"preview_status={preview_note}",
+                ]
+                if action.params_salient_preview:
+                    fields.append(f"decision_salient={action.params_salient_preview}")
+                if action.external_irreversible_effect:
+                    fields.append(
+                        "external_irreversible_effect="
+                        f"{action.external_irreversible_effect}"
+                    )
+                fields.append(f"params_preview={action.params_preview}")
+                summaries.append("; ".join(fields))
             state.proposed_action = " | ".join(summaries)[:1_600]
             state.current_goal = "Resolve or release the exact held consequential action batch."
             for summary in summaries:
@@ -192,4 +223,3 @@ class LiveChildReducer:
         if state.binding.status not in {"completed", "failed", "cancelled"}:
             state.saw_update_before_completion = True
         return self.card(session_id)
-

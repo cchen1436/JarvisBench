@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Mapping
 
 from jarvisbench.core.contracts import BoundaryCandidate
 from jarvisbench.core.controller import AttentionController, AttentionDecision
@@ -56,3 +57,38 @@ class ReferenceSingleAgentControllerAdapter:
                 False,
                 f"reference controller failed closed: {type(exc).__name__}",
             )
+
+    def translate_requester_answer(
+        self,
+        candidate: BoundaryCandidate,
+        decision: AttentionDecision,
+        answer: str,
+        disclosed_memories: tuple[Mapping[str, object], ...] = (),
+    ) -> str:
+        translator = getattr(self.controller, "translate_requester_answer", None)
+        if not callable(translator):
+            return f"Requester answer for this decision: {answer}"
+        try:
+            guidance = translator(
+                candidate,
+                decision,
+                answer,
+                disclosed_memories,
+            )
+            if not isinstance(guidance, str) or not guidance.strip():
+                raise ValueError("reference guidance is empty")
+            if len(guidance) > 1_600:
+                raise ValueError("reference guidance exceeds the bound")
+            return guidance
+        except Exception:
+            return f"Requester answer for this decision: {answer}"
+
+    def record_committed_question(
+        self,
+        candidate: BoundaryCandidate,
+        decision: AttentionDecision,
+        guidance: str = "",
+    ) -> None:
+        recorder = getattr(self.controller, "record_committed_question", None)
+        if callable(recorder):
+            recorder(candidate, decision, guidance)

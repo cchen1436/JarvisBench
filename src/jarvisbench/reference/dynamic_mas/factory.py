@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Callable
 
 from jarvisbench.core.decision_ledger import DecisionLedger
-from jarvisbench.core.providers import OpenAICompatibleProvider, TextProvider
+from jarvisbench.core.providers import OpenAIProvider, TextProvider
 from jarvisbench.reference.jarvis import ReferenceJarvis
 from jarvisbench.reference.luna import LunaUser
 
@@ -37,16 +37,15 @@ def build_reference_scheduler(
     config: ReferenceDynamicMasConfig,
     provider: TextProvider | None = None,
 ) -> DynamicMasScheduler:
-    """Build the optional reference controller without endpoint defaults.
+    """Build the optional reference controller on OpenAI's official API.
 
-    ``OpenAICompatibleProvider`` reads ``JARVISBENCH_API_BASE`` plus either
-    ``JARVISBENCH_API_KEY`` or the mounted file named by
-    ``JARVISBENCH_API_KEY_FILE`` when no provider is supplied. Neither the
+    ``OpenAIProvider`` reads ``OPENAI_API_KEY`` or the mounted file named by
+    ``OPENAI_API_KEY_FILE`` when no provider is supplied. Neither the
     resolved value nor the file contents are serialized into episode manifests,
     event logs, or control receipts.
     """
 
-    text_provider = provider or OpenAICompatibleProvider()
+    text_provider = provider or OpenAIProvider()
     registry = DynamicChildRegistry(project_id=project_id)
     return DynamicMasScheduler(
         project_id=project_id,

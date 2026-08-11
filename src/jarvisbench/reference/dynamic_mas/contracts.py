@@ -132,6 +132,11 @@ class HeldAction:
     params_sha256: str
     params_preview: str
     artifact_paths: tuple[str, ...] = ()
+    params_chars: int = 0
+    params_truncated: bool = False
+    params_salient_preview: str = ""
+    final_record_intent: bool = False
+    external_irreversible_effect: str = ""
 
     def __post_init__(self) -> None:
         exact_id(self.action_id, "action_id")
@@ -140,6 +145,20 @@ class HeldAction:
         exact_sha256(self.action_fingerprint, "action_fingerprint")
         exact_sha256(self.params_sha256, "params_sha256")
         bounded_text(self.params_preview, "params_preview", MAX_PREVIEW_CHARS, allow_empty=True)
+        if type(self.params_chars) is not int or self.params_chars < 0:
+            raise DynamicMasContractError("params_chars must be a non-negative integer")
+        bounded_text(
+            self.params_salient_preview,
+            "params_salient_preview",
+            MAX_PREVIEW_CHARS,
+            allow_empty=True,
+        )
+        bounded_text(
+            self.external_irreversible_effect,
+            "external_irreversible_effect",
+            240,
+            allow_empty=True,
+        )
         if len(self.artifact_paths) > 24:
             raise DynamicMasContractError("too many artifact paths")
         for path in self.artifact_paths:
@@ -161,6 +180,21 @@ class HeldAction:
                 allow_empty=True,
             ),
             artifact_paths=tuple(str(item) for item in value.get("artifact_paths", ())),
+            params_chars=int(value.get("params_chars", 0)),
+            params_truncated=value.get("params_truncated") is True,
+            params_salient_preview=bounded_text(
+                value.get("params_salient_preview", ""),
+                "params_salient_preview",
+                MAX_PREVIEW_CHARS,
+                allow_empty=True,
+            ),
+            final_record_intent=value.get("final_record_intent") is True,
+            external_irreversible_effect=bounded_text(
+                value.get("external_irreversible_effect", ""),
+                "external_irreversible_effect",
+                240,
+                allow_empty=True,
+            ),
         )
 
     def to_dict(self) -> dict[str, Any]:

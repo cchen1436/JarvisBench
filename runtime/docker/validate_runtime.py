@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import importlib.metadata
 import json
 import os
 import shutil
@@ -20,17 +21,39 @@ REQUIRED_EXECUTABLES = (
     "node",
     "openclaw",
     "pandoc",
+    "pdfinfo",
+    "pdftotext",
     "python3",
     "sqlite3",
     "wkhtmltopdf",
 )
 REQUIRED_IMPORTS = (
+    "PIL",
+    "docx",
     "jarvisbench.settings.single_agent_runtime",
     "jarvisbench.settings.multi_agent_runtime",
     "jarvisbench.tracks.agent_collaboration",
     "jarvisbench.tracks.user_interaction",
     "jarvisbench.reference.dynamic_mas",
+    "jsonschema",
+    "openpyxl",
+    "openai",
+    "pandas",
+    "pdfplumber",
+    "pptx",
+    "pypdf",
 )
+EXPECTED_PYTHON_DISTRIBUTIONS = {
+    "Pillow": "12.3.0",
+    "jsonschema": "4.25.1",
+    "openpyxl": "3.1.5",
+    "openai": "2.48.0",
+    "pandas": "2.3.3",
+    "pdfplumber": "0.11.10",
+    "pypdf": "6.14.2",
+    "python-docx": "1.2.0",
+    "python-pptx": "1.0.2",
+}
 
 
 def main() -> int:
@@ -99,6 +122,19 @@ def main() -> int:
     import_failures = [
         module for module, imported in module_imports.items() if not imported
     ]
+    python_distributions: dict[str, str | None] = {}
+    for distribution_name in EXPECTED_PYTHON_DISTRIBUTIONS:
+        try:
+            python_distributions[distribution_name] = importlib.metadata.version(
+                distribution_name
+            )
+        except importlib.metadata.PackageNotFoundError:
+            python_distributions[distribution_name] = None
+    distribution_failures = {
+        name: {"expected": expected, "observed": python_distributions[name]}
+        for name, expected in EXPECTED_PYTHON_DISTRIBUTIONS.items()
+        if python_distributions[name] != expected
+    }
     python_supported = sys.version_info >= (3, 10)
     ok = not (
         privacy_findings
@@ -107,6 +143,7 @@ def main() -> int:
         or count_failures
         or executable_failures
         or import_failures
+        or distribution_failures
         or not python_supported
     )
     print(
@@ -126,6 +163,8 @@ def main() -> int:
                 "missing_executables": executable_failures,
                 "module_imports": module_imports,
                 "failed_module_imports": import_failures,
+                "python_distributions": python_distributions,
+                "python_distribution_failures": distribution_failures,
                 "python_supported": python_supported,
             },
             indent=2,

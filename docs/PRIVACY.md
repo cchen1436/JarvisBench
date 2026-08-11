@@ -14,12 +14,18 @@ The following are never participant-visible or included in the public image:
 manifest. Runtime mounts public task assets read-only. Evaluator and requester
 services are separate processes with narrower interfaces.
 
-For MAS execution, OpenClaw receives a file-backed `SecretRef`, not a resolved
-provider key in configuration. This prevents accidental copies in generated
-model catalogs, config backups, and audit logs. The mounted file is still
-readable to code with the same container uid; deployments whose threat model
-includes a malicious worker need a credential-injecting loopback broker or a
-stronger process boundary.
+For worker execution, JarvisBench does not write a custom provider or credential
+reference into `openclaw.json`. A configured 0400 credential file is read only
+by the runner and exposed under the selected vendor environment variable to the
+OpenClaw subprocess, which then uses its native provider implementation. This
+prevents accidental copies in generated model catalogs and config backups. The
+value remains visible to code in the same process/uid boundary; deployments
+whose threat model includes a malicious worker need a credential-injecting
+loopback broker or a stronger process boundary.
+
+The bundled Jarvis and Luna client fixes its base URL to OpenAI's official API,
+uses the official Python SDK and Responses API with `store=False`, and reads
+only `OPENAI_API_KEY` or a bounded 0400 `OPENAI_API_KEY_FILE`.
 
 The repository scanner is defense in depth; it is not a substitute for building
 the release from a fail-closed allowlist.

@@ -189,6 +189,7 @@ class SingleAgentWorkerRequest:
     required_result_paths: tuple[str, ...]
     worker_timeout_seconds: int
     layout: SingleAgentEpisodeLayout
+    task_brief: str = ""
 
 
 @dataclass(frozen=True)
@@ -626,9 +627,22 @@ class SingleAgentRunner:
             if candidate.session_id != session_id:
                 raise RuntimeError("single-agent candidate belongs to another session")
             candidate_count += 1
+            declared_local_intermediate = bool(candidate.artifact_paths) and (
+                not candidate.final_record_intent
+                and not candidate.external_irreversible_effect
+                and "results/final.json" in candidate.required_result_paths
+                and set(candidate.artifact_paths).issubset(
+                    set(candidate.required_result_paths)
+                )
+            )
             if self.controller is None:
                 decision = AttentionDecision(
                     False, "baseline controller disabled"
+                )
+            elif declared_local_intermediate:
+                decision = AttentionDecision(
+                    False,
+                    "deterministic prefilter released a declared local intermediate artifact",
                 )
             else:
                 try:
@@ -660,6 +674,17 @@ class SingleAgentRunner:
                     False,
                     "duplicate requester decision suppressed; original action released",
                 )
+            elif (
+                decision.request_attention
+                and not candidate.final_record_intent
+                and not candidate.external_irreversible_effect
+                and "results/final.json" in candidate.required_result_paths
+                and attention_budget_used >= max(0, self.max_attention_requests - 1)
+            ):
+                decision = AttentionDecision(
+                    False,
+                    "terminal requester-attention slot reserved; intermediate action released",
+                )
             elif decision.request_attention and attention_budget_used >= self.max_attention_requests:
                 decision = AttentionDecision(
                     False,
@@ -669,17 +694,51 @@ class SingleAgentRunner:
                 attention_budget_used += 1
                 if self.requester is not None and self.requester_context_loader is not None:
                     try:
+                        requester_context = self.requester_context_loader()
+                        answer_with_record = getattr(
+                            self.requester, "answer_with_record", None
+                        )
+                        disclosed_memories: tuple[Mapping[str, object], ...] = ()
+                        disclosed_memory_ids: tuple[str, ...] = ()
+                        if callable(answer_with_record):
+                            answer_record = answer_with_record(
+                                str(decision.question), requester_context
+                            )
+                            answer_value = getattr(answer_record, "user_text", "")
+                            disclosed_memories = tuple(
+                                getattr(answer_record, "disclosed_memories", ())
+                            )
+                            disclosed_memory_ids = tuple(
+                                str(item)
+                                for item in getattr(
+                                    answer_record, "disclosed_memory_ids", ()
+                                )
+                            )
+                        else:
+                            answer_value = self.requester.answer(
+                                str(decision.question), requester_context
+                            )
                         answer = bounded_text(
-                            self.requester.answer(
-                                str(decision.question),
-                                self.requester_context_loader(),
-                            ),
+                            answer_value,
                             "requester answer",
                             1_400,
                         )
                         decision_id = DecisionLedger.new_id()
+                        translator = getattr(
+                            self.controller, "translate_requester_answer", None
+                        )
+                        translated = (
+                            translator(
+                                candidate,
+                                decision,
+                                answer,
+                                disclosed_memories,
+                            )
+                            if callable(translator)
+                            else f"Requester answer for this decision: {answer}"
+                        )
                         guidance = bounded_text(
-                            f"Requester answer for this decision: {answer}",
+                            translated,
                             "requester guidance",
                             1_600,
                         )
@@ -687,11 +746,13 @@ class SingleAgentRunner:
                             DecisionRecord(
                                 decision_id=decision_id,
                                 answer=answer,
-                                scope="worker",
+                                scope=decision.scope,
                                 affected_workers=(session_id,),
+                                affected_artifacts=candidate.artifact_paths,
                                 provenance="luna_requester_channel",
                                 validity="project_episode",
                                 reversible=True,
+                                disclosed_memory_ids=disclosed_memory_ids,
                             )
                         )
                         attention_fingerprints.add(attention_fingerprint)
@@ -712,11 +773,26 @@ class SingleAgentRunner:
             )
             if decision.request_attention:
                 attention_request_count += 1
+                if decision_id and decision.question:
+                    # Frozen graders treat the controller's actual requester
+                    # turn as evaluation evidence.  Keep it beside, but not
+                    # inside, requester-facing ``results/``.
+                    _append_private_jsonl(
+                        layout.export_root / "questions.jsonl",
+                        {
+                            "event": "question",
+                            "question": decision.question,
+                            "decision_id": decision_id,
+                            "scope": decision.scope,
+                        },
+                    )
             _append_private_jsonl(
                 review_receipts_path,
                 {
                     "type": "single_agent.controller_review.receipt",
                     "session_id": bound.session_id,
+                    "review_id": candidate.review_id,
+                    "batch_id": candidate.batch_id,
                     "epoch": bound.epoch,
                     "nonce": bound.nonce,
                     "action_id": bound.action_id,
@@ -736,6 +812,19 @@ class SingleAgentRunner:
             )
             return bound
 
+        def on_attention_committed(
+            candidate: BoundaryCandidate,
+            response: ControllerReview,
+        ) -> None:
+            recorder = getattr(self.controller, "record_committed_question", None)
+            if callable(recorder):
+                recorder(candidate, response.decision, response.guidance)
+
+        # The executable OpenClaw adapter invokes this only after the
+        # generation-changing interrupt and its delivery receipt are durable.
+        # Plain third-party/fake worker ports can ignore the optional hook.
+        setattr(review, "on_attention_committed", on_attention_committed)
+
         request = SingleAgentWorkerRequest(
             task_id=task.task_id,
             session_id=session_id,
@@ -744,6 +833,7 @@ class SingleAgentRunner:
             required_result_paths=task.result_paths,
             worker_timeout_seconds=int(task.manifest["runtime"]["worker_timeout_seconds"]),
             layout=layout,
+            task_brief=task.brief,
         )
         execution = self.worker.execute(request, review)
 
@@ -774,7 +864,11 @@ class SingleAgentRunner:
                     "sha256": sha256_file(layout.export_root / path),
                     "bytes": (layout.export_root / path).stat().st_size,
                 }
+                # Auxiliary evaluator evidence such as action_log.jsonl and
+                # questions.jsonl is intentionally outside the deliverable
+                # manifest, matching the frozen run contract.
                 for path in sorted(existing)
+                if path == "results" or path.startswith("results/")
             ],
         }
         _write_private_json(

@@ -49,6 +49,11 @@ class SingleAgentControlService:
         diagnostics_path: Path,
         decision_ledger: DecisionLedger,
         review: Callable[[BoundaryCandidate], ControllerReview],
+        on_attention_committed: (
+            Callable[[BoundaryCandidate, ControllerReview], None] | None
+        ) = None,
+        task_brief: str = "",
+        required_result_paths: tuple[str, ...] = (),
         poll_seconds: float = 0.1,
     ) -> None:
         self.project_id = project_id
@@ -60,6 +65,11 @@ class SingleAgentControlService:
         self.diagnostics_path = Path(diagnostics_path)
         self.decision_ledger = decision_ledger
         self.review_callback = review
+        self.on_attention_committed = on_attention_committed
+        self.task_brief = bounded_text(
+            task_brief, "task_brief", 4_000, allow_empty=True
+        )
+        self.required_result_paths = tuple(required_result_paths)
         self.poll_seconds = max(0.025, float(poll_seconds))
         self.reducer = LiveChildReducer(project_id)
         self.binding = SessionBinding(
@@ -113,8 +123,9 @@ class SingleAgentControlService:
         self.events_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.events_path.touch(mode=0o600, exist_ok=True)
 
-    @staticmethod
-    def _candidate(review: ReviewRequest, reducer: LiveChildReducer) -> BoundaryCandidate:
+    def _candidate(
+        self, review: ReviewRequest, reducer: LiveChildReducer
+    ) -> BoundaryCandidate:
         update = reducer.reduced_update(review.session_id)
         fingerprint = hashlib.sha256(
             "\0".join(review.action_fingerprints).encode("utf-8")
@@ -131,6 +142,25 @@ class SingleAgentControlService:
                 or "Execute the exact held consequential action batch.",
                 "consequence",
                 1_600,
+            ),
+            artifact_paths=tuple(
+                sorted({path for action in review.actions for path in action.artifact_paths})
+            ),
+            final_record_intent=any(
+                action.final_record_intent for action in review.actions
+            ),
+            preview_truncated=any(action.params_truncated for action in review.actions),
+            task_brief=self.task_brief,
+            required_result_paths=self.required_result_paths,
+            review_id=review.review_id,
+            batch_id=review.batch_id,
+            external_irreversible_effect=next(
+                (
+                    action.external_irreversible_effect
+                    for action in review.actions
+                    if action.external_irreversible_effect
+                ),
+                "",
             ),
         )
 
@@ -226,6 +256,13 @@ class SingleAgentControlService:
                         guidance_sha256=str(invalidation["guidance_sha256"]),
                     )
                 )
+                if self.on_attention_committed is not None:
+                    try:
+                        self.on_attention_committed(candidate, response)
+                    except Exception:
+                        # This is a bounded controller cache update. The exact
+                        # interrupt and delivery receipt above remain authority.
+                        pass
                 self._processed_reviews[review.review_id] = "interrupt_replan"
             else:
                 self.control_plane.allow(review)

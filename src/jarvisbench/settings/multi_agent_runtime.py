@@ -21,7 +21,7 @@ from jarvisbench.reference.dynamic_mas.contracts import (
 )
 from jarvisbench.reference.dynamic_mas.scheduler import DynamicMasScheduler
 from jarvisbench.reference.dynamic_mas.service import DynamicMasService
-from jarvisbench.core.providers import resolve_secret_file
+from jarvisbench.core.providers import read_secret
 
 
 PARENT_SESSION_ID = "chat"
@@ -80,8 +80,7 @@ class MultiAgentRuntimeConfig:
     task_dir: Path
     episode_root: Path
     worker_model: str
-    provider_base_url: str = ""
-    api_key_env: str = "JARVISBENCH_WORKER_API_KEY"
+    api_key_env: str = "ANTHROPIC_API_KEY"
     api_key_file: Path | None = None
     thinking: str = "provider_default"
     openclaw_executable: str = "openclaw"
@@ -216,13 +215,6 @@ def build_integration_prompt(manifest: Mapping[str, Any]) -> str:
     )
 
 
-def _provider_and_model(model: str) -> tuple[str, str]:
-    provider, model_id = model.split("/", 1)
-    if not provider or not model_id:
-        raise ValueError("worker_model must use provider/model-id syntax")
-    return provider, model_id
-
-
 class MultiAgentRuntime:
     """Docker-local formal MAS runner using the native loopback Gateway.
 
@@ -345,59 +337,10 @@ class MultiAgentRuntime:
         )
 
     def _write_openclaw_config(self) -> None:
-        if not self.config.provider_base_url:
-            raise ValueError("provider_base_url is required for an executable run")
-        secret_provider = "jarvisbench_worker"
-        secret_value = os.environ.get(self.config.api_key_env, "")
-        if secret_value:
-            # Keep the resolved value out of Python-owned files. OpenClaw
-            # resolves this SecretRef only into its in-memory snapshot.
-            secret_ref: dict[str, str] = {
-                "source": "env",
-                "provider": secret_provider,
-                "id": self.config.api_key_env,
-            }
-            secret_config: dict[str, Any] = {
-                "source": "env",
-                "allowlist": [self.config.api_key_env],
-            }
-        else:
-            secret_file = resolve_secret_file(
-                file_env="JARVISBENCH_WORKER_API_KEY_FILE",
-                explicit_file=self.config.api_key_file,
-            )
-            if secret_file is None:
-                raise ValueError(
-                    f"{self.config.api_key_env} or a worker credential file is required "
-                    "for an executable run"
-                )
-            secret_ref = {
-                "source": "file",
-                "provider": secret_provider,
-                "id": "value",
-            }
-            secret_config = {
-                "source": "file",
-                "path": str(secret_file),
-                "mode": "singleValue",
-            }
-        provider, model_id = _provider_and_model(self.config.worker_model)
-        model: dict[str, Any] = {"id": model_id, "name": model_id, "input": ["text", "image"]}
-        if self.config.thinking not in {"", "off", "provider_default"}:
-            model.update({"reasoning": True, "compat": {"supportsReasoningEffort": True}})
-        value: dict[str, Any] = {
-            "secrets": {"providers": {secret_provider: secret_config}},
-            "models": {
-                "providers": {
-                    provider: {
-                        "baseUrl": self.config.provider_base_url,
-                        "apiKey": secret_ref,
-                        "api": "openai-completions",
-                        "models": [model],
-                    }
-                }
-            },
-        }
+        # Provider selection and request formatting stay inside OpenClaw's
+        # native provider stack. JarvisBench writes only its optional control
+        # plugin configuration, never a synthetic models.providers catalog.
+        value: dict[str, Any] = {}
         if self.scheduler is not None:
             value["plugins"] = {
                 "enabled": True,
@@ -416,8 +359,16 @@ class MultiAgentRuntime:
     def _environment(self, gateway_token: str | None = None) -> dict[str, str]:
         allowed = _WORKER_ENV_ALLOWLIST.union(self.config.environment_passthrough)
         env = {name: value for name, value in os.environ.items() if name in allowed}
-        if self.config.api_key_env in os.environ:
-            env[self.config.api_key_env] = os.environ[self.config.api_key_env]
+        worker_secret = read_secret(
+            value_env=self.config.api_key_env,
+            file_env="JARVISBENCH_WORKER_API_KEY_FILE",
+            explicit_file=self.config.api_key_file,
+        )
+        if not worker_secret:
+            raise ValueError(
+                f"{self.config.api_key_env} or a worker credential file is required"
+            )
+        env[self.config.api_key_env] = worker_secret
         env.update(
             {
                 "HOME": str(self.home),

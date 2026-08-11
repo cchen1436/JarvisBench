@@ -208,6 +208,89 @@ async function waitForReview(): Promise<Record<string, any>> {
   throw new Error("review event did not arrive");
 }
 
+async function waitForReviewForTool(
+  toolCallId: string,
+): Promise<Record<string, any>> {
+  const deadline = Date.now() + 2000;
+  while (Date.now() < deadline) {
+    if (fs.existsSync(eventPath)) {
+      const review = fs
+        .readFileSync(eventPath, "utf8")
+        .split("\n")
+        .filter(Boolean)
+        .map((line) => JSON.parse(line))
+        .find(
+          (event) =>
+            event.type === "jarvis.review.requested" &&
+            event.payload.held_actions?.some(
+              (action: Record<string, any>) =>
+                action.tool_call_id === toolCallId,
+            ),
+        );
+      if (review) return review;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error(`review did not arrive for ${toolCallId}`);
+}
+
+async function heldActionFor(
+  toolName: string,
+  toolCallId: string,
+  params: Record<string, unknown>,
+): Promise<Record<string, any>> {
+  writeControl(baseControl());
+  const handlers = new Map<string, Function>();
+  pluginModule.default.register({
+    source: `parity-${toolCallId}`,
+    registerTool() {},
+    on(name: string, handler: Function) {
+      handlers.set(name, handler);
+    },
+  });
+  const beforeTool = handlers.get("before_tool_call");
+  assert.ok(beforeTool);
+  const held = beforeTool!(
+    { toolName, toolCallId, params },
+    { sessionId, runId: `run-${toolCallId}` },
+  );
+  const review = await waitForReviewForTool(toolCallId);
+  const control = baseControl();
+  control.review_responses = [
+    {
+      schema_version: "1.0",
+      kind: "review_response",
+      control_id: `control-${toolCallId}`,
+      project_id: projectId,
+      run_id: review.payload.run_id,
+      session_id: sessionId,
+      turn_id: review.payload.turn_id,
+      review_id: review.payload.review_id,
+      batch_id: review.payload.batch_id,
+      action_ids: review.payload.held_actions.map(
+        (item: Record<string, any>) => item.action_id,
+      ),
+      action_fingerprints: review.payload.held_actions.map(
+        (item: Record<string, any>) => item.action_fingerprint,
+      ),
+      control_epoch: 0,
+      next_control_epoch: 0,
+      nonce: "a".repeat(48),
+      next_nonce: "a".repeat(48),
+      expected_event_seq: review.payload.expected_event_seq,
+      decision: "allow",
+      decision_id: "",
+      guidance: "",
+      guidance_sha256: "",
+      created_at: new Date().toISOString(),
+    },
+  ];
+  writeControl(control);
+  assert.equal(await held, undefined);
+  assert.equal(review.payload.held_actions.length, 1);
+  return review.payload.held_actions[0];
+}
+
 test("read-only prefilter fails closed on shell mutation", () => {
   assert.equal(
     execModule.classifyReadOnlyExec("exec", { command: "rg needle src" }).readOnly,
@@ -220,6 +303,123 @@ test("read-only prefilter fails closed on shell mutation", () => {
   );
   assert.equal(pluginModule.classifyAction("write", { path: "results/a" }).consequential, true);
   assert.equal(pluginModule.classifyAction("read", { path: "public/a" }).consequential, false);
+});
+
+test("final record intent requires a direct mutation target", async () => {
+  const referenceOnly = {
+    command:
+      "python3 -m json.tool /workspace/results/final.json >/tmp/final-check.txt",
+  };
+  assert.deepEqual(
+    pluginModule.directArtifactPaths("exec", referenceOnly),
+    [],
+  );
+  assert.equal(
+    pluginModule.classifyAction("exec", referenceOnly).consequential,
+    false,
+  );
+  const aliasedWrite = {
+    command:
+      "p=Path('/workspace/results/final.json'); payload='{}'; p.write_text(payload)",
+  };
+  assert.deepEqual(
+    pluginModule.directArtifactPaths("exec", aliasedWrite),
+    ["results/final.json"],
+  );
+  assert.equal(
+    pluginModule.classifyAction("exec", aliasedWrite).consequential,
+    true,
+  );
+  const longPythonFinal = {
+    command: [
+      "python3 - <<'PY'",
+      "from pathlib import Path",
+      `noise = '${"x".repeat(1800)}'`,
+      "obj = {'decision': {'options_considered': ['Vendor D with exception', 'Vendor A without exception'], 'choice': 'Vendor A without exception', 'rationale': 'avoid advance payment risk', 'question_for_requester': 'Choose Vendor D with an exception or Vendor A without one?'}}",
+      `tail = '${"y".repeat(1800)}'`,
+      "p = Path('/workspace/results/final.json')",
+      "p.write_text(json.dumps(obj))",
+      "PY",
+    ].join("\n"),
+  };
+  const longSalient = pluginModule.paramsSalientPreview(longPythonFinal);
+  assert.match(longSalient, /choice:.*Vendor A without exception/);
+  assert.match(longSalient, /question_for_requester:.*Vendor D with an exception/);
+  assert.deepEqual(pluginModule.directArtifactPaths("exec", longPythonFinal), [
+    "results/final.json",
+  ]);
+
+  const written = await heldActionFor("write", "call-final-direct-write", {
+    path: "/workspace/results/final.json",
+    content: '{"choice":"provisional"}',
+  });
+  assert.equal(written.final_record_intent, true);
+  assert.deepEqual(written.artifact_paths, ["results/final.json"]);
+
+  const edited = await heldActionFor("edit", "call-final-direct-edit", {
+    path: "/workspace/results/final.json",
+    oldText: '"choice":"provisional"',
+    newText: '"choice":"accepted"',
+  });
+  assert.equal(edited.final_record_intent, true);
+  assert.deepEqual(edited.artifact_paths, ["results/final.json"]);
+
+  const intermediate = await heldActionFor(
+    "write",
+    "call-intermediate-direct-write",
+    {
+      path: "/workspace/results/recommendation.md",
+      content: "A reversible intermediate recommendation.",
+    },
+  );
+  assert.equal(intermediate.final_record_intent, false);
+  assert.deepEqual(intermediate.artifact_paths, ["results/recommendation.md"]);
+});
+
+test("held review preserves bounded head-tail and decision-salient fields", async () => {
+  const content = JSON.stringify({
+    selected_option: "requester-facing choice",
+    rationale: "public evidence supports a provisional outcome",
+    body: `HEAD-${"x".repeat(1800)}-TAIL`,
+  });
+  const action = await heldActionFor("write", "call-bounded-final-write", {
+    path: "/workspace/results/final.json",
+    content,
+  });
+
+  assert.equal(action.final_record_intent, true);
+  assert.equal(action.params_truncated, true);
+  assert.ok(action.params_chars > action.params_preview.length);
+  assert.match(action.params_preview, /bounded preview of/);
+  assert.match(action.params_preview, /HEAD-/);
+  assert.match(action.params_preview, /-TAIL/);
+  assert.match(action.params_salient_preview, /selected_option/);
+  assert.match(action.params_salient_preview, /rationale/);
+});
+
+test("decision salience prioritizes choice and requester question over assumptions", () => {
+  const question = "Which funding priority should the final action plan use?";
+  const salient = pluginModule.paramsSalientPreview({
+    path: "/workspace/results/final.json",
+    content: JSON.stringify({
+      decision: {
+        assumptions: ["generic assumption ".repeat(90)],
+        choice: (
+          `Synthesized plan ${"x".repeat(150)} `
+          + "Fund restore and rollback drills before the other controls. "
+          + `Preserve provenance ${"y".repeat(150)}`
+        ),
+        rationale: "public evidence ".repeat(60),
+        question_for_requester: question,
+      },
+    }),
+  });
+
+  assert.ok(salient.length <= 900);
+  assert.match(salient, /Fund restore and rollback drills/);
+  assert.match(salient, new RegExp(question.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.ok(salient.indexOf("choice:") < salient.indexOf("question_for_requester:"));
+  assert.ok(salient.indexOf("question_for_requester:") < salient.indexOf("assumptions:"));
 });
 
 test("dynamic registration and control namespaces are exact per session", () => {
@@ -360,7 +560,7 @@ test("plugin holds a child mutation and releases only an exact response", async 
     },
     { sessionId, runId: "run-1" },
   );
-  const review = await waitForReview();
+  const review = await waitForReviewForTool("call-1");
   assert.equal(review.payload.session_id, sessionId);
   assert.equal(review.payload.raw_trace_included, undefined);
   assert.ok(review.payload.expected_event_seq > 0);

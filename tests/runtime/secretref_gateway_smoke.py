@@ -32,14 +32,15 @@ def main() -> int:
             task_dir=task_dir,
             episode_root=episode,
             project_id="offline-secretref-smoke",
-            worker_model="smoke/provider-model",
-            provider_base_url="https://provider.invalid/v1",
+            worker_model="anthropic/claude-opus-4-6",
             api_key_file=secret,
         )
     )
     runtime._prepare()
     port = runtime._free_port()
     environment = runtime._environment()
+    if environment.get("ANTHROPIC_API_KEY", "").encode() != DUMMY_SECRET:
+        raise RuntimeError("native OpenClaw credential environment was not populated")
     runtime._configure_openclaw(environment, gateway_port=port)
     log_path = runtime.logs_root / "gateway.log"
     with log_path.open("wb") as log:
@@ -83,7 +84,7 @@ def main() -> int:
                     break
                 time.sleep(0.25)
             if not healthy:
-                raise RuntimeError("offline SecretRef Gateway did not become healthy")
+                raise RuntimeError("offline native-provider Gateway did not become healthy")
         finally:
             if gateway.poll() is None:
                 os.killpg(gateway.pid, signal.SIGTERM)
@@ -99,20 +100,17 @@ def main() -> int:
         for path in files
         if DUMMY_SECRET in path.read_bytes()
     ]
-    marker_files = [
-        str(path.relative_to(episode))
-        for path in files
-        if b"secretref-managed" in path.read_bytes()
-    ]
+    config = json.loads((runtime.openclaw_home / "openclaw.json").read_text())
     result = {
-        "schema_version": "jarvisbench.secretref-smoke.v1",
-        "ok": healthy and not matches and bool(marker_files),
+        "schema_version": "jarvisbench.native-provider-smoke.v1",
+        "ok": healthy and not matches and "models" not in config,
         "network": "none",
         "gateway_healthy": healthy,
         "agent_messages_sent": 0,
         "files_scanned": len(files),
         "exact_secret_matches": len(matches),
-        "secretref_marker_files": sorted(marker_files),
+        "openclaw_native_provider": True,
+        "custom_model_catalog_written": "models" in config,
     }
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0 if result["ok"] else 1

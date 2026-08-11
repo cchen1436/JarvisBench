@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.metadata
 import json
 import os
 import platform
@@ -9,6 +10,19 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+
+PYTHON_DISTRIBUTIONS = {
+    "PIL": "Pillow",
+    "docx": "python-docx",
+    "jsonschema": "jsonschema",
+    "openpyxl": "openpyxl",
+    "openai": "openai",
+    "pandas": "pandas",
+    "pdfplumber": "pdfplumber",
+    "pptx": "python-pptx",
+    "pypdf": "pypdf",
+}
 
 
 def run(command: list[str]) -> subprocess.CompletedProcess[str] | None:
@@ -59,6 +73,16 @@ def os_release() -> dict[str, str]:
     return {"id": values.get("ID", ""), "version_id": values.get("VERSION_ID", "")}
 
 
+def python_distribution_versions() -> dict[str, str | None]:
+    versions: dict[str, str | None] = {}
+    for import_name, distribution_name in PYTHON_DISTRIBUTIONS.items():
+        try:
+            versions[import_name] = importlib.metadata.version(distribution_name)
+        except importlib.metadata.PackageNotFoundError:
+            versions[import_name] = None
+    return versions
+
+
 print(
     json.dumps(
         {
@@ -79,11 +103,17 @@ print(
             "git": version(["git", "--version"]),
             "sqlite": version(["sqlite3", "--version"]),
             "pandoc": version(["pandoc", "--version"]),
+            "pdfinfo": version(["pdfinfo", "-v"]),
+            "pdftotext": version(["pdftotext", "-v"]),
+            "python_packages": python_distribution_versions(),
             "wkhtmltopdf": version(["wkhtmltopdf", "--version"]),
             "contracts": {
                 "apt_snapshot": os.environ.get("JARVISBENCH_APT_SNAPSHOT", ""),
                 "openclaw_lock_sha256": sha256(
                     Path("/opt/openclaw-runtime/package-lock.json")
+                ),
+                "python_runtime_lock_sha256": sha256(
+                    Path("/opt/jarvisbench-runtime/python-requirements.lock")
                 ),
                 "task_manifest_sha256": sha256(
                     Path("/opt/jarvisbench/TASKS_SHA256SUMS")

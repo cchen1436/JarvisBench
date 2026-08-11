@@ -1,0 +1,102 @@
+name: Publish OpenClaw runtime image
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: ghcr-${{ github.repository }}-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  build-smoke-push:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.10"
+          cache: pip
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22.22.1"
+      - name: Validate source, privacy, tasks, and control contracts
+        run: |
+          python -m pip install -e '.[test]'
+          ./scripts/validate.sh
+          node --test tests/typescript/*.test.ts
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Resolve immutable image tags
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          owner="$(printf '%s' "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')"
+          image="ghcr.io/${owner}/jarvisbench-openclaw"
+          if [[ "$GITHUB_REF_TYPE" == "tag" && "$GITHUB_REF_NAME" == v* ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="sha-${GITHUB_SHA}"
+          fi
+          [[ "$version" =~ ^[0-9A-Za-z][0-9A-Za-z._-]*$ ]]
+          [[ "$version" != "latest" ]]
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "sha_tag=sha-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+      - name: Log in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build one linux/amd64 image
+        env:
+          IMAGE: ${{ steps.image.outputs.image }}
+          VERSION: ${{ steps.image.outputs.version }}
+          SHA_TAG: ${{ steps.image.outputs.sha_tag }}
+        run: |
+          set -euo pipefail
+          tags=(--tag "$IMAGE:$VERSION")
+          if [[ "$VERSION" != "$SHA_TAG" ]]; then
+            tags+=(--tag "$IMAGE:$SHA_TAG")
+          fi
+          docker buildx build \
+            --load \
+            --platform linux/amd64 \
+            "${tags[@]}" \
+            --build-arg "BUILD_DATE=$(git show -s --format=%cI "$GITHUB_SHA")" \
+            --build-arg "VCS_REF=$GITHUB_SHA" \
+            --build-arg "VERSION=$VERSION" \
+            --build-arg "SOURCE_URL=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            --file runtime/docker/Dockerfile \
+            .
+      - name: Smoke the exact image that will be pushed
+        env:
+          IMAGE: ${{ steps.image.outputs.image }}
+          VERSION: ${{ steps.image.outputs.version }}
+        run: ./scripts/container-smoke.sh "$IMAGE:$VERSION" linux/amd64
+      - name: Push the already-tested image
+        env:
+          IMAGE: ${{ steps.image.outputs.image }}
+          VERSION: ${{ steps.image.outputs.version }}
+          SHA_TAG: ${{ steps.image.outputs.sha_tag }}
+        run: |
+          set -euo pipefail
+          docker push "$IMAGE:$VERSION"
+          if [[ "$VERSION" != "$SHA_TAG" ]]; then
+            docker push "$IMAGE:$SHA_TAG"
+          fi
+          digest="sha256:$(docker buildx imagetools inspect --raw "$IMAGE:$VERSION" | sha256sum | awk '{print $1}')"
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          printf 'Image: `%s`\n\nDigest: `%s`\n' "$IMAGE:$VERSION" "$digest" >> "$GITHUB_STEP_SUMMARY"

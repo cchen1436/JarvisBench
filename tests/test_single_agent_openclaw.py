@@ -127,6 +127,10 @@ if args and args[0] == "agent":
                     "params_sha256": "b" * 64,
                     "params_preview": "write results/final.json",
                     "artifact_paths": ["results/final.json"],
+                    "params_chars": 24,
+                    "params_truncated": False,
+                    "params_salient_preview": "choice: option B",
+                    "final_record_intent": True,
                 }],
             },
         },
@@ -165,6 +169,16 @@ if args and args[0] == "agent":
         stream.flush()
         os.fsync(stream.fileno())
     workspace = Path(os.environ["JB_WORKSPACE"])
+    audit = workspace / ".jarvisbench"
+    audit.mkdir(parents=True, exist_ok=True)
+    (audit / "action_log.jsonl").write_text(
+        json.dumps({"event": "action", "action": "save_fixture", "arguments": {}}) + "\n",
+        encoding="utf-8",
+    )
+    (audit / "questions.jsonl").write_text(
+        json.dumps({"event": "question", "question": "What should the worker use?"}) + "\n",
+        encoding="utf-8",
+    )
     result = workspace / "results" / "final.json"
     result.write_text('{"ok":true}\n', encoding="utf-8")
     sessions = Path(os.environ["OPENCLAW_STATE_DIR"]) / "agents" / "main" / "sessions"
@@ -210,8 +224,7 @@ def test_single_reference_transport_closes_delivery_and_application_receipts(
     requester = Requester()
     worker = OpenClawSingleAgentWorker(
         OpenClawSingleAgentConfig(
-            worker_model="provider/model",
-            provider_base_url="https://provider.invalid/v1",
+            worker_model="anthropic/claude-opus-test",
             api_key_env="FAKE_WORKER_KEY",
             openclaw_executable=str(fake),
             runtime_root=tmp_path / "runtime",
@@ -228,6 +241,11 @@ def test_single_reference_transport_closes_delivery_and_application_receipts(
         max_attention_requests=2,
     ).run(_task(tmp_path), tmp_path / "runs", run_id="single-reference")
     assert result.status == "completed"
+    openclaw_config = json.loads(
+        (worker.openclaw_home / "openclaw.json").read_text(encoding="utf-8")
+    )
+    assert "models" not in openclaw_config
+    assert "secrets" not in openclaw_config
     assert result.attention_request_count == 1
     assert requester.calls == 1
     episode = result.episode_root
@@ -255,6 +273,21 @@ def test_single_reference_transport_closes_delivery_and_application_receipts(
     assert len(control["application_receipts"]) == 1
     assert control["guidance_queue"] == []
     assert (episode / "bounded_control_trace.jsonl").is_file()
+    action_log = episode / "export" / "action_log.jsonl"
+    assert action_log.is_file()
+    assert json.loads(action_log.read_text())["action"] == "save_fixture"
+    assert not (episode / "export" / "results" / "action_log.jsonl").exists()
+    question_log = episode / "export" / "questions.jsonl"
+    questions = [json.loads(line)["question"] for line in question_log.read_text().splitlines()]
+    assert questions == [
+        "Which output option should be used?",
+        "What should the worker use?",
+    ]
+    manifest_paths = {
+        item["path"]
+        for item in json.loads((episode / "results_manifest.json").read_text())["files"]
+    }
+    assert manifest_paths == {"results/final.json"}
     assert b"private-test-key" not in b"".join(
         path.read_bytes() for path in archived.rglob("*") if path.is_file()
     )

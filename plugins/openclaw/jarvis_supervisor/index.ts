@@ -7,7 +7,7 @@ import { classifyReadOnlyExec } from "./read_only_exec.ts";
 type JsonRecord = Record<string, unknown>;
 
 export const PLUGIN_ID = "jarvisbench-mas-supervisor";
-export const PLUGIN_VERSION = "0.1.0";
+export const PLUGIN_VERSION = "0.1.0-rc.1";
 export const CONTROL_PROTOCOL_VERSION = "1.0-release";
 
 const PROJECT_ID = String(process.env.JARVIS_MAS_PROJECT_ID || "");
@@ -48,6 +48,15 @@ const BATCH_SETTLE_MS = Math.max(
 );
 const MAX_EVENT_LINE_BYTES = 64 * 1024;
 const MAX_PREVIEW_CHARS = 900;
+const FINAL_RECORD_PATH = path.resolve(
+  String(
+    process.env.JARVIS_FINAL_RECORD_PATH ||
+      path.join(WORKSPACE_ROOT, "results", "final.json"),
+  ),
+);
+const FINAL_RECORD_RELATIVE = path
+  .relative(WORKSPACE_ROOT, FINAL_RECORD_PATH)
+  .replaceAll("\\", "/");
 
 const turnBySession = new Map<string, number>();
 const batches = new Map<string, ReviewBatch>();
@@ -75,7 +84,12 @@ type HeldAction = {
   paramsSha256: string;
   actionFingerprint: string;
   paramsPreview: string;
+  paramsChars: number;
+  paramsTruncated: boolean;
+  paramsSalientPreview: string;
   artifactPaths: string[];
+  finalRecordIntent: boolean;
+  externalIrreversibleEffect: string;
   resolve: (value: unknown) => void;
 };
 
@@ -150,6 +164,202 @@ function sha256(value: string): string {
 function compact(value: unknown, maximum = MAX_PREVIEW_CHARS): string {
   const text = typeof value === "string" ? value : stableStringify(value);
   return text.replace(/\s+/g, " ").trim().slice(0, maximum);
+}
+
+function compactFull(value: unknown): string {
+  const text = typeof value === "string" ? value : stableStringify(value);
+  return text.replace(/\s+/g, " ").trim();
+}
+
+function boundedHeadTail(value: unknown, maximum = MAX_PREVIEW_CHARS): string {
+  const text = compactFull(value);
+  if (text.length <= maximum) return text;
+  const marker = ` ... [bounded preview of ${text.length} chars] ... `;
+  const side = Math.max(1, Math.floor((maximum - marker.length) / 2));
+  return `${text.slice(0, side)}${marker}${text.slice(-side)}`;
+}
+
+const SALIENT_KEYS = new Set([
+  "acceptance",
+  "approval",
+  "assumptions",
+  "authorization",
+  "choice",
+  "default",
+  "decision",
+  "exception",
+  "options_considered",
+  "policy",
+  "question_for_requester",
+  "rationale",
+  "recommendation",
+  "risk",
+  "selected_option",
+  "selected_option_id",
+]);
+
+// Order semantic commitments independently of JSON insertion order. Final
+// records commonly serialize assumptions before choice/question; preserving
+// that order lets long assumptions evict the exact decision boundary from the
+// bounded controller packet.
+const SALIENT_KEY_ORDER = [
+  "choice",
+  "question_for_requester",
+  "selected_option",
+  "recommendation",
+  "selected_option_id",
+  "authorization",
+  "approval",
+  "acceptance",
+  "exception",
+  "policy",
+  "default",
+  "options_considered",
+  "rationale",
+  "risk",
+  "assumptions",
+  "decision",
+];
+const SALIENT_KEY_RANK = new Map(
+  SALIENT_KEY_ORDER.map((key, index) => [key, index]),
+);
+const PRIMARY_SALIENT_KEYS = new Set([
+  "choice",
+  "question_for_requester",
+  "selected_option",
+  "recommendation",
+]);
+
+function inlineDecisionSalience(value: string): string[] {
+  const output: string[] = [];
+  const keys = Array.from(SALIENT_KEYS)
+    .map(escapedPattern)
+    .join("|");
+  const pattern = new RegExp(
+    String.raw`(?:["']?)(?:${keys})(?:["']?)\s*[:=]\s*`,
+    "gi",
+  );
+  for (const match of value.matchAll(pattern)) {
+    if (output.length >= 16 || match.index === undefined) break;
+    const rawKey = match[0].match(new RegExp(keys, "i"))?.[0] || "decision";
+    const start = match.index + match[0].length;
+    let end = start;
+    const opening = value[start];
+    if (opening === '"' || opening === "'") {
+      let escaped = false;
+      end += 1;
+      for (; end < value.length && end - start < 1_200; end += 1) {
+        const char = value[end];
+        if (escaped) {
+          escaped = false;
+        } else if (char === "\\") {
+          escaped = true;
+        } else if (char === opening) {
+          end += 1;
+          break;
+        }
+      }
+    } else if (opening === "[" || opening === "{") {
+      const closing = opening === "[" ? "]" : "}";
+      let depth = 0;
+      let quote = "";
+      let escaped = false;
+      for (; end < value.length && end - start < 1_600; end += 1) {
+        const char = value[end];
+        if (quote) {
+          if (escaped) escaped = false;
+          else if (char === "\\") escaped = true;
+          else if (char === quote) quote = "";
+          continue;
+        }
+        if (char === '"' || char === "'") quote = char;
+        else if (char === opening) depth += 1;
+        else if (char === closing && --depth === 0) {
+          end += 1;
+          break;
+        }
+      }
+    } else {
+      while (
+        end < value.length &&
+        end - start < 800 &&
+        !/[\n\r,;}]/.test(value[end])
+      ) {
+        end += 1;
+      }
+    }
+    const excerpt = value.slice(start, end).trim();
+    if (excerpt) output.push(`${rawKey.toLowerCase()}: ${boundedHeadTail(excerpt, 420)}`);
+  }
+  return output;
+}
+
+/** Extract bounded decision-bearing fields without sending the full payload. */
+export function paramsSalientPreview(value: unknown): string {
+  const found: string[] = [];
+  const visit = (item: unknown, depth: number): void => {
+    if (depth > 8 || found.length >= 16) return;
+    if (typeof item === "string") {
+      const trimmed = item.trim();
+      let parsed = false;
+      if (
+        (trimmed.startsWith("{") || trimmed.startsWith("[")) &&
+        trimmed.length <= 256 * 1024
+      ) {
+        try {
+          visit(JSON.parse(trimmed), depth + 1);
+          parsed = true;
+        } catch {
+          // Non-JSON document content remains outside the salient packet.
+        }
+      }
+      if (!parsed) found.push(...inlineDecisionSalience(trimmed));
+      return;
+    }
+    if (Array.isArray(item)) {
+      item.slice(0, 32).forEach((child) => visit(child, depth + 1));
+      return;
+    }
+    const record = asRecord(item);
+    if (!record) return;
+    for (const [key, child] of Object.entries(record)) {
+      const normalized = key.trim().toLowerCase();
+      if (SALIENT_KEYS.has(normalized)) {
+        const maximum = normalized === "choice" ? 600 : 420;
+        found.push(`${key}: ${boundedHeadTail(child, maximum)}`);
+      }
+      visit(child, depth + 1);
+      if (found.length >= 16) break;
+    }
+  };
+  visit(value, 0);
+  const ranked = Array.from(new Set(found))
+    .map((text, index) => {
+      const separator = text.indexOf(":");
+      const key = (separator >= 0 ? text.slice(0, separator) : "decision")
+        .trim()
+        .toLowerCase();
+      return {
+        text,
+        key,
+        index,
+        rank: SALIENT_KEY_RANK.get(key) ?? SALIENT_KEY_ORDER.length,
+      };
+    })
+    .sort((left, right) => left.rank - right.rank || left.index - right.index);
+
+  const selected: string[] = [];
+  let remaining = MAX_PREVIEW_CHARS;
+  for (const item of ranked) {
+    if (remaining < 80) break;
+    const primary = PRIMARY_SALIENT_KEYS.has(item.key);
+    const itemMaximum = item.key === "choice" ? 500 : primary ? 300 : 180;
+    const maximum = Math.min(itemMaximum, remaining);
+    const excerpt = boundedHeadTail(item.text, maximum);
+    selected.push(excerpt);
+    remaining -= excerpt.length + 3;
+  }
+  return selected.join(" | ");
 }
 
 function collectStrings(value: unknown, output: string[] = []): string[] {
@@ -395,7 +605,7 @@ export function exactReviewResponse(
     : null;
 }
 
-function artifactPaths(value: unknown): string[] {
+function referencedArtifactPaths(value: unknown): string[] {
   const output = new Set<string>();
   for (const text of collectStrings(value)) {
     const normalized = text.replaceAll("\\", "/");
@@ -406,6 +616,139 @@ function artifactPaths(value: unknown): string[] {
     }
   }
   return Array.from(output).sort().slice(0, 24);
+}
+
+const DIRECT_PATH_KEYS = new Set([
+  "dest",
+  "destination",
+  "file",
+  "file_path",
+  "filepath",
+  "output",
+  "output_path",
+  "path",
+  "target",
+]);
+
+function normalizedResultPath(value: unknown): string {
+  if (typeof value !== "string") return "";
+  const raw = value.trim().replace(/^['"]|['"]$/g, "").replaceAll("\\", "/");
+  if (!raw || raw.includes("\0")) return "";
+  const absolute = path.resolve(WORKSPACE_ROOT, raw.replace(/^\/workspace\//, ""));
+  const relative = path.relative(WORKSPACE_ROOT, absolute).replaceAll("\\", "/");
+  if (
+    !relative.startsWith("results/") ||
+    relative === "results/" ||
+    relative.split("/").includes("..")
+  ) {
+    return "";
+  }
+  return relative;
+}
+
+function nativeMutationTargets(params: JsonRecord): string[] {
+  const output = new Set<string>();
+  const visit = (value: unknown, key = "", depth = 0): void => {
+    if (depth > 6 || output.size >= 24) return;
+    if (typeof value === "string") {
+      if (DIRECT_PATH_KEYS.has(key.toLowerCase())) {
+        const target = normalizedResultPath(value);
+        if (target) output.add(target);
+      }
+      if (key.toLowerCase() === "patch") {
+        for (const match of value.matchAll(
+          /^\*\*\* (?:Add|Update|Delete|Move to) File:\s*(.+)$/gm,
+        )) {
+          const target = normalizedResultPath(match[1]);
+          if (target) output.add(target);
+        }
+      }
+      return;
+    }
+    if (Array.isArray(value)) {
+      value.forEach((item) => visit(item, key, depth + 1));
+      return;
+    }
+    const record = asRecord(value);
+    if (!record) return;
+    for (const [childKey, child] of Object.entries(record)) {
+      visit(child, childKey, depth + 1);
+    }
+  };
+  visit(params);
+  return Array.from(output).sort();
+}
+
+function commandText(params: JsonRecord): string {
+  for (const name of ["command", "cmd", "script", "input"]) {
+    const value = params[name];
+    if (typeof value === "string" && value.trim()) return value;
+  }
+  return "";
+}
+
+function escapedPattern(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function execMutationTargets(params: JsonRecord): string[] {
+  const command = commandText(params);
+  if (!command) return [];
+  const output = new Set<string>();
+  const containsResultMutator = /(?:\.(?:write_bytes|write_text|replace|rename|unlink|touch)\s*\(|\b(?:json\.)?dump\s*\(|\b(?:remove|rename|replace|unlink)\s*\(|\b(?:save|to_csv|to_json)\s*\(|\bopen\s*\([^\n]{0,240},\s*["'][wax+])/m.test(
+    command,
+  );
+  for (const target of referencedArtifactPaths({ command })) {
+    const forms = [target, `/workspace/${target}`];
+    if (
+      forms.some((form) => {
+        const item = escapedPattern(form);
+        return [
+          new RegExp(String.raw`(?:^|\s)(?:>|>>)\s*["']?${item}(?:["']|\s|$)`),
+          new RegExp(String.raw`\b(?:cp|install|mv|rm|tee|touch|truncate)\b[^\n;&|]*${item}`),
+          new RegExp(String.raw`${item}[^\n]{0,240}\.(?:write_bytes|write_text)\s*\(`),
+          new RegExp(String.raw`\b(?:dump|save|to_csv|to_json)\s*\([^\n]{0,240}${item}`),
+          new RegExp(String.raw`\bopen\s*\(\s*["']${item}["']\s*,\s*["'][wax+]`),
+        ].some((pattern) => pattern.test(command)) || containsResultMutator;
+      })
+    ) {
+      output.add(target);
+    }
+  }
+  return Array.from(output).sort();
+}
+
+/** Return only result artifacts directly mutated by this exact action. */
+export function directArtifactPaths(
+  toolName: string,
+  params: JsonRecord,
+): string[] {
+  const lower = toolName.toLowerCase();
+  if (["exec", "shell", "bash", "command", "run"].includes(lower)) {
+    return execMutationTargets(params).slice(0, 24);
+  }
+  if (
+    /(?:^|[_-])(?:write|edit|patch|delete|move|copy|create|update)(?:$|[_-])/.test(
+      lower,
+    ) ||
+    ["write", "edit", "edit_file", "apply_patch"].includes(lower)
+  ) {
+    return nativeMutationTargets(params).slice(0, 24);
+  }
+  return [];
+}
+
+function externalIrreversibleExec(params: JsonRecord): string {
+  const command = commandText(params).toLowerCase();
+  if (!command) return "";
+  const patterns: Array<[RegExp, string]> = [
+    [/\bgit\b[^\n;&|]*\bpush\b/, "git_push"],
+    [/\bgh\s+(?:pr\s+(?:create|merge|close)|release\s+create)\b/, "github_write"],
+    [/\bcurl\b[^\n]*(?:-x\s+(?:post|put|patch|delete)|--request\s+(?:post|put|patch|delete)|--data(?:-raw|-binary)?\b|--upload-file\b)/, "http_write"],
+    [/\b(?:npm\s+publish|twine\s+upload|docker\s+push)\b/, "publish"],
+    [/\b(?:scp|sftp|rsync)\b[^\n]*(?:\w+@[^:]+:|\b[a-z][a-z0-9.-]+:)/, "remote_copy"],
+  ];
+  return patterns.find(([pattern]) => pattern.test(command))?.[1] || "";
 }
 
 const READ_ONLY_TOOLS = new Set([
@@ -424,18 +767,44 @@ const READ_ONLY_TOOLS = new Set([
 export function classifyAction(toolName: string, params: JsonRecord): {
   consequential: boolean;
   reason: string;
+  externalIrreversibleEffect: string;
 } {
   const lower = toolName.toLowerCase();
-  if (lower === "jarvis_control") return { consequential: false, reason: "control_ack" };
-  if (READ_ONLY_TOOLS.has(lower)) return { consequential: false, reason: "read_only_tool" };
-  const exec = classifyReadOnlyExec(lower, params);
-  if (exec.reason !== "not_exec") {
+  if (lower === "jarvis_control") {
     return {
-      consequential: !exec.readOnly,
-      reason: exec.readOnly ? "read_only_exec" : `exec_${exec.reason}`,
+      consequential: false,
+      reason: "control_ack",
+      externalIrreversibleEffect: "",
     };
   }
-  return { consequential: true, reason: "mutation_or_unknown" };
+  if (READ_ONLY_TOOLS.has(lower)) {
+    return {
+      consequential: false,
+      reason: "read_only_tool",
+      externalIrreversibleEffect: "",
+    };
+  }
+  const exec = classifyReadOnlyExec(lower, params);
+  if (exec.reason !== "not_exec") {
+    const directTargets = directArtifactPaths(lower, params);
+    const externalEffect = externalIrreversibleExec(params);
+    return {
+      consequential: directTargets.length > 0 || Boolean(externalEffect),
+      reason: directTargets.length > 0
+        ? "exec_result_write"
+        : externalEffect
+          ? `exec_${externalEffect}`
+          : exec.readOnly
+            ? "read_only_exec"
+            : "ordinary_exec",
+      externalIrreversibleEffect: externalEffect,
+    };
+  }
+  return {
+    consequential: true,
+    reason: "mutation_or_unknown",
+    externalIrreversibleEffect: "",
+  };
 }
 
 function referencesControlPlane(params: JsonRecord): boolean {
@@ -510,7 +879,12 @@ async function finalizeBatch(batch: ReviewBatch): Promise<void> {
     action_fingerprint: action.actionFingerprint,
     params_sha256: action.paramsSha256,
     params_preview: action.paramsPreview,
+    params_chars: action.paramsChars,
+    params_truncated: action.paramsTruncated,
+    params_salient_preview: action.paramsSalientPreview,
     artifact_paths: action.artifactPaths,
+    final_record_intent: action.finalRecordIntent,
+    external_irreversible_effect: action.externalIrreversibleEffect,
   }));
   const expectedEventSeq = appendEvent("jarvis.review.requested", batch.sessionId, {
     run_id: batch.runId,
@@ -1012,12 +1386,20 @@ const plugin = {
         const actionId = `action-${crypto.randomUUID()}`;
         const paramsRaw = stableStringify(params);
         const paramsSha256 = sha256(paramsRaw);
-        const artifacts = artifactPaths(params);
+        const artifacts = directArtifactPaths(toolName, params);
+        const finalRecordIntent = Boolean(
+          classification.consequential &&
+            artifacts.includes(FINAL_RECORD_RELATIVE),
+        );
+        const salientPreview = finalRecordIntent
+          ? paramsSalientPreview(params)
+          : "";
         const fingerprint = sha256(
           stableStringify({
             tool_name: toolName,
             params_sha256: paramsSha256,
             artifact_paths: artifacts,
+            final_record_intent: finalRecordIntent,
           }),
         );
         appendEvent("agent.tool.proposed", sessionId, {
@@ -1028,6 +1410,8 @@ const plugin = {
           params_sha256: paramsSha256,
           action_fingerprint: fingerprint,
           artifact_paths: artifacts,
+          final_record_intent: finalRecordIntent,
+          external_irreversible_effect: classification.externalIrreversibleEffect,
           review_classification: classification.reason,
         });
 
@@ -1095,8 +1479,13 @@ const plugin = {
             toolName,
             paramsSha256,
             actionFingerprint: fingerprint,
-            paramsPreview: compact(params),
+            paramsPreview: boundedHeadTail(params),
+            paramsChars: compactFull(params).length,
+            paramsTruncated: compactFull(params).length > MAX_PREVIEW_CHARS,
+            paramsSalientPreview: salientPreview,
             artifactPaths: artifacts,
+            finalRecordIntent,
+            externalIrreversibleEffect: classification.externalIrreversibleEffect,
           },
         );
       },

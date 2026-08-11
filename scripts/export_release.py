@@ -142,7 +142,7 @@ SECRET_PATTERNS = (
     re.compile(rb"-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----"),
     re.compile(rb"(?<![A-Za-z0-9_-])sk-[A-Za-z0-9_-]{20,}(?![A-Za-z0-9_-])"),
     re.compile(
-        rb"(?:OPENAI_API_KEY|MY_PROXY_API_KEY|NVIDIA_API_KEY|AWS_SECRET_ACCESS_KEY)"
+        rb"(?:OPENAI_API_KEY|ANTHROPIC_API_KEY|MY_PROXY_API_KEY|NVIDIA_API_KEY|AWS_SECRET_ACCESS_KEY)"
         rb"\s*[:=]\s*[\"']?(?!<|\$\{|example|placeholder|changeme|your[_-])"
         rb"[^\s\"']{12,}",
         re.IGNORECASE,

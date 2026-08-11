@@ -9,7 +9,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from jarvisbench.core.privacy import sanitize_requester_context, scan_release_tree
-from jarvisbench.core.providers import read_secret, resolve_secret_file
+from jarvisbench.core.providers import resolve_secret_file
 from jarvisbench.settings.multi_agent import MultiAgentSetting
 from jarvisbench.settings.single_agent import SingleAgentSetting
 from jarvisbench.tracks.user_interaction import DeterministicReplayResponder, UserInteractionTrack
@@ -76,8 +76,8 @@ def _run_episode(args: argparse.Namespace) -> int:
         raise SystemExit(
             "Track 2 is an isolated post-hoc text path; use the replay command"
         )
-    if not args.worker_model or not args.provider_base_url:
-        raise SystemExit("worker model and provider base URL must be configured explicitly")
+    if not args.worker_model:
+        raise SystemExit("worker model must be configured explicitly")
     if not os.environ.get(args.worker_api_key_env, ""):
         try:
             worker_key_file = resolve_secret_file(
@@ -100,27 +100,12 @@ def _run_episode(args: argparse.Namespace) -> int:
             raise SystemExit(
                 "reference control requires Jarvis model, user model, and a private requester context"
             )
+        from jarvisbench.core.providers import OpenAIProvider
+
         try:
-            reference_key = read_secret(
-                value_env="JARVISBENCH_API_KEY",
-                file_env="JARVISBENCH_API_KEY_FILE",
-            )
+            reference_provider = OpenAIProvider()
         except ValueError as exc:
             raise SystemExit(str(exc)) from exc
-        if not reference_key:
-            raise SystemExit(
-                "a JARVISBENCH_API_KEY value or JARVISBENCH_API_KEY_FILE is required "
-                "by the reference controller"
-            )
-        from jarvisbench.core.providers import OpenAICompatibleProvider
-
-        # Positional construction avoids rendering a credential-shaped
-        # assignment in source while keeping the already validated secret only
-        # in process memory.
-        reference_provider = OpenAICompatibleProvider(
-            args.reference_provider_base_url or args.provider_base_url,
-            reference_key,
-        )
         requester_loader = _requester_context_loader(args.requester_context)
 
     # Imports remain lazy so validation, dry-run, and Track 2 never initialize
@@ -149,7 +134,6 @@ def _run_episode(args: argparse.Namespace) -> int:
         worker = OpenClawSingleAgentWorker(
             OpenClawSingleAgentConfig(
                 worker_model=args.worker_model,
-                provider_base_url=args.provider_base_url,
                 api_key_env=args.worker_api_key_env,
                 api_key_file=args.worker_api_key_file,
                 thinking=args.worker_thinking,
@@ -206,7 +190,6 @@ def _run_episode(args: argparse.Namespace) -> int:
             episode_root=args.episode_root,
             project_id=project_id,
             worker_model=args.worker_model,
-            provider_base_url=args.provider_base_url,
             api_key_env=args.worker_api_key_env,
             api_key_file=args.worker_api_key_file,
             thinking=args.worker_thinking,
@@ -253,13 +236,10 @@ def build_parser() -> argparse.ArgumentParser:
         default="provider_default",
     )
     run.add_argument(
-        "--provider-base-url", default=os.environ.get("JARVISBENCH_API_BASE", "")
+        "--worker-api-key-env",
+        default=os.environ.get("JARVISBENCH_WORKER_API_KEY_ENV", "ANTHROPIC_API_KEY"),
+        help="vendor credential environment variable passed only to OpenClaw",
     )
-    run.add_argument(
-        "--reference-provider-base-url",
-        default=os.environ.get("JARVISBENCH_API_BASE", ""),
-    )
-    run.add_argument("--worker-api-key-env", default="JARVISBENCH_WORKER_API_KEY")
     run.add_argument(
         "--worker-api-key-file",
         type=Path,
@@ -269,8 +249,14 @@ def build_parser() -> argparse.ArgumentParser:
             else None
         ),
     )
-    run.add_argument("--jarvis-model", default=os.environ.get("JARVISBENCH_JARVIS_MODEL", ""))
-    run.add_argument("--user-model", default=os.environ.get("JARVISBENCH_USER_MODEL", ""))
+    run.add_argument(
+        "--jarvis-model",
+        default=os.environ.get("JARVISBENCH_JARVIS_MODEL", "gpt-5.6-sol"),
+    )
+    run.add_argument(
+        "--user-model",
+        default=os.environ.get("JARVISBENCH_USER_MODEL", "gpt-5.6-luna"),
+    )
     run.add_argument(
         "--jarvis-reasoning",
         choices=("off", "low", "medium", "high"),

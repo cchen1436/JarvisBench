@@ -19,6 +19,7 @@ class DecisionRecord:
     reversible: bool = True
     delivery_receipts: tuple[str, ...] = field(default_factory=tuple)
     application_receipts: tuple[str, ...] = field(default_factory=tuple)
+    disclosed_memory_ids: tuple[str, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)

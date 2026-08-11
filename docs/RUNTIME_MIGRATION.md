@@ -58,9 +58,9 @@ JARVISBENCH_PLATFORM=linux/amd64 \
 ```
 
 Its complete offline container smoke passed, including all four topology/track
-dry runs, six TypeScript supervisor contracts, task/checksum/privacy validation,
-and the repeatable no-network SecretRef Gateway scan. It remains an unsigned,
-local release candidate rather than a public release artifact.
+dry runs, TypeScript supervisor contracts, task/checksum/privacy validation,
+and the repeatable no-network native-provider Gateway scan. It remains an
+unsigned, local release candidate rather than a public release artifact.
 
 ## Migration sequence
 
@@ -98,24 +98,25 @@ findings, and no credential, private canary state, requester profile, or session
 artifact is present in this repository or image build context. It is a runtime
 credential-containment failure.
 
-The worker adapter was subsequently changed to store only a file-backed
-OpenClaw `SecretRef` in `openclaw.json`; OpenClaw resolves the mounted value into
-its in-memory snapshot and writes `secretref-managed` markers to generated model
-catalogs. A `--network none` preflight exercised configuration, the native
-Gateway, and the dynamic supervisor. It reported a healthy Gateway, a ready
-supervisor, zero agent messages, and zero exact dummy-secret matches across all
-54 files in the episode tree. Unit tests separately cover file and environment
-SecretRef serialization and prove that the resolved values do not enter
-`openclaw.json`.
+The public worker adapter now avoids a custom model catalog entirely. It selects
+the worker with `openclaw models set <native-provider/model>` and supplies only
+the selected vendor environment variable to the OpenClaw subprocess. A 0400
+file can be used as the runner's credential source, but neither its path nor its
+value enters `openclaw.json`. A `--network none` preflight exercises native
+provider selection, the Gateway, and the dynamic supervisor, and scans the
+episode tree for the exact dummy credential.
 
-This remediation was subsequently exercised by one representative single-agent
-and one dynamic-MAS network-capable episode. Both completed the runtime,
-artifact, exact-receipt, exact-secret scan, and sealed-grader handoff; neither is
-a full-suite score-parity claim. SecretRef prevents accidental
-persistence but does not prevent arbitrary worker code running under the same
-container uid from deliberately reading the mounted file. Treat a credential
-broker or a separate uid/process boundary as a distinct privacy-hardening
-decision before public deployment.
+The earlier file-backed custom-provider remediation was exercised by one
+representative single-agent and one dynamic-MAS network-capable episode. Those
+historical canaries completed the runtime, artifact, exact-receipt,
+exact-secret scan, and sealed-grader handoff, but they predate the final native
+OpenClaw/official OpenAI API split and are not a full-suite score-parity claim.
+The current split is therefore gated by the no-model contract and container
+smokes until independently supplied Anthropic/OpenAI credentials are used for
+an opt-in canary. Native environment credentials prevent config persistence but
+do not prevent arbitrary worker code under the same uid from reading process
+state. Treat a credential broker or a separate uid/process boundary as a
+distinct privacy-hardening decision before public deployment.
 
 ## macOS archive and xattr caveat
 

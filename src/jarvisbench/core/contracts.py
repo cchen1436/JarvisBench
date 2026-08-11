@@ -96,6 +96,14 @@ class BoundaryCandidate:
     action_fingerprint: str
     reduced_update: ReducedUpdate
     consequence: str
+    artifact_paths: tuple[str, ...] = ()
+    final_record_intent: bool = False
+    preview_truncated: bool = False
+    task_brief: str = ""
+    required_result_paths: tuple[str, ...] = ()
+    review_id: str = ""
+    batch_id: str = ""
+    external_irreversible_effect: str = ""
 
     def __post_init__(self) -> None:
         if self.epoch < 0:
@@ -103,4 +111,13 @@ class BoundaryCandidate:
         for name in ("session_id", "nonce", "action_id", "action_fingerprint", "consequence"):
             if not str(getattr(self, name)).strip():
                 raise ValueError(f"{name} must be non-empty")
-
+        if len(self.artifact_paths) > 24:
+            raise ValueError("boundary candidate has too many artifact paths")
+        if len(self.task_brief) > 4_000:
+            raise ValueError("boundary candidate task brief exceeds its bound")
+        if len(self.required_result_paths) > 256:
+            raise ValueError("boundary candidate has too many required results")
+        if len(self.review_id) > 240 or len(self.batch_id) > 240:
+            raise ValueError("boundary candidate review identity exceeds its bound")
+        if len(self.external_irreversible_effect) > 240:
+            raise ValueError("boundary candidate external-effect label exceeds its bound")

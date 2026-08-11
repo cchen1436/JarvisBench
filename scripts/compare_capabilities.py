@@ -17,6 +17,9 @@ REQUIRED_EXACT = (
     "git",
     "sqlite",
     "pandoc",
+    "pdfinfo",
+    "pdftotext",
+    "python_packages",
     "wkhtmltopdf",
 )
 
@@ -39,4 +42,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
