@@ -91,7 +91,8 @@ The current task export contains:
 | `single_agent` | 20 | 178 | 3,573,569 | 0 |
 | `multi_agent` | 10 | 141 | 640,317 | 0 |
 
-`TASKS_SHA256SUMS` has 320 unique entries: one provenance receipt plus all 319
+`manifests/tasks/TASKS_SHA256SUMS` has 320 unique entries: one provenance
+receipt plus all 319
 task-tree files. Its path set exactly matches the exported files.
 
 For all 20 single-agent tasks, `assets.public` exactly enumerates every public

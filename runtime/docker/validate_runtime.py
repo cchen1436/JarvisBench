@@ -67,8 +67,8 @@ def main() -> int:
     )
     args = parser.parse_args()
     root = Path(os.environ.get("JARVISBENCH_ROOT", "/opt/jarvisbench")).resolve()
-    manifest = root / "TASKS_SHA256SUMS"
-    provenance = root / "TASKS_PROVENANCE.json"
+    manifest = root / "manifests" / "tasks" / "TASKS_SHA256SUMS"
+    provenance = root / "manifests" / "tasks" / "TASKS_PROVENANCE.json"
     privacy_findings = scan_release_tree(root)
     contract_files = {
         "TASKS_SHA256SUMS": manifest.is_file() and not manifest.is_symlink(),

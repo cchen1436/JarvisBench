@@ -53,6 +53,14 @@ class VerifyChecksumsTests(unittest.TestCase):
             ["extra task file: tasks/single_agent/example/public/unlisted.txt"],
         )
 
+    def test_manifest_can_live_outside_the_task_tree(self) -> None:
+        contract_dir = self.root / "manifests/tasks"
+        contract_dir.mkdir(parents=True)
+        manifest = contract_dir / "TASKS_SHA256SUMS"
+        manifest.write_text(f"{self.manifest_line}\n", encoding="utf-8")
+
+        self.assertEqual(verify(self.root, manifest), [])
+
 
 if __name__ == "__main__":
     unittest.main()

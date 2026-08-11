@@ -21,5 +21,6 @@ Never include API keys, requester-private profiles, evaluator-only material, or
 raw model traces in a security report. Use GitHub private vulnerability
 reporting once it is enabled for the repository.
 
-See `docs/PRIVACY.md` and `docs/RUNTIME_MIGRATION.md` for the complete boundary
-and dependency audit.
+See [privacy](../docs/PRIVACY.md) and
+[runtime migration](../docs/RUNTIME_MIGRATION.md) for the complete boundary and
+dependency audit.

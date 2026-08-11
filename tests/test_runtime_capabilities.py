@@ -14,6 +14,7 @@ DOCKERFILE_PATH = ROOT / "runtime" / "docker" / "Dockerfile"
 NPM_PACKAGE_PATH = ROOT / "runtime" / "npm" / "package.json"
 NPM_LOCK_PATH = ROOT / "runtime" / "npm" / "package-lock.json"
 VALIDATOR_PATH = ROOT / "runtime" / "docker" / "validate_runtime.py"
+TASK_CONTRACT_ROOT = ROOT / "manifests" / "tasks"
 
 EXPECTED_DOCUMENT_DISTRIBUTIONS = {
     "Pillow": "12.3.0",
@@ -79,6 +80,15 @@ def test_openclaw_security_refresh_is_exactly_pinned() -> None:
     dockerfile = DOCKERFILE_PATH.read_text(encoding="utf-8")
     assert "node:22.22.3-bookworm-slim" in dockerfile
     assert "sha256:e21fc383b50d5347dc7a9f1cae45b8f4e2f0d39f7ade28e4eef7d2934522b752" in dockerfile
+
+
+def test_task_contracts_have_one_canonical_subdirectory() -> None:
+    assert (TASK_CONTRACT_ROOT / "TASKS_PROVENANCE.json").is_file()
+    assert (TASK_CONTRACT_ROOT / "TASKS_SHA256SUMS").is_file()
+    dockerfile = DOCKERFILE_PATH.read_text(encoding="utf-8")
+    assert "COPY manifests/tasks/TASKS_PROVENANCE.json" in dockerfile
+    validator = VALIDATOR_PATH.read_text(encoding="utf-8")
+    assert 'root / "manifests" / "tasks" / "TASKS_SHA256SUMS"' in validator
 
 
 def test_runtime_contract_checks_document_capabilities() -> None:

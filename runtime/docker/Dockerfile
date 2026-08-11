@@ -56,7 +56,7 @@ WORKDIR /opt/jarvisbench
 COPY pyproject.toml README.md ./
 COPY src ./src
 COPY plugins ./plugins
-COPY TASKS_PROVENANCE.json TASKS_SHA256SUMS ./
+COPY manifests/tasks/TASKS_PROVENANCE.json manifests/tasks/TASKS_SHA256SUMS ./manifests/tasks/
 COPY scripts/__init__.py scripts/verify_checksums.py ./scripts/
 
 COPY runtime/docker/entrypoint.sh /usr/local/bin/jarvisbench-entrypoint
@@ -68,7 +68,7 @@ RUN chmod 0755 \
        /usr/local/bin/jarvisbench-capabilities \
        /usr/local/bin/jarvisbench-runtime-validate \
        /usr/local/bin/jb \
-    && chmod 0444 /opt/jarvisbench/TASKS_PROVENANCE.json /opt/jarvisbench/TASKS_SHA256SUMS \
+    && chmod 0444 /opt/jarvisbench/manifests/tasks/TASKS_PROVENANCE.json /opt/jarvisbench/manifests/tasks/TASKS_SHA256SUMS \
     && python3 /usr/local/bin/jarvisbench-runtime-validate --runtime-only \
     && install -d -m 0700 /var/lib/jarvisbench/openclaw /var/lib/jarvisbench/episodes /workspace \
     && groupadd --system --gid 10001 jarvisbench \

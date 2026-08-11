@@ -116,7 +116,7 @@ print(
                     Path("/opt/jarvisbench-runtime/python-requirements.lock")
                 ),
                 "task_manifest_sha256": sha256(
-                    Path("/opt/jarvisbench/TASKS_SHA256SUMS")
+                    Path("/opt/jarvisbench/manifests/tasks/TASKS_SHA256SUMS")
                 ),
             },
         },
