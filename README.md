@@ -81,3 +81,9 @@ reference-controller instructions are in the [full quickstart](docs/QUICKSTART.m
 The main implementation is under `src/jarvisbench/`; public tasks are under
 `tasks/`; the optional OpenClaw integration is under `plugins/` and `runtime/`.
 
+## Acknowledgments
+
+We thank the creators of the benchmarks from which JarvisBench sources its 20
+single-agent tasks: UniClawBench (6), Pi-Bench (4), AgentIF-OneDay (3),
+WildClawBench (2), and Claw-Eval, HiL-Bench, MyPCBench, PARE-Bench, and
+SWE-Together (1 each).
